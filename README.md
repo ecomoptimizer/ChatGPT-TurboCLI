@@ -26,10 +26,15 @@ When a response from OpenAI is received, it will be printed to the console in gr
 ### Example
 
 `python3 turbopersonas.py --api_key <api>`
+
 >> What type of chatbot would you like to create? 
+
 > coding wizard
+
 >> Say hello to your new assistant!
+
 > How do you code "hello world" in rust?
+
 >> To print "Hello, world!" in Rust, you can use the `println!` macro:
 >>
 >>```rust

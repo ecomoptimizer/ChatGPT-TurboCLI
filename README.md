@@ -48,3 +48,6 @@ When a response from OpenAI is received, it will be printed to the console in gr
 ## License
 
 This project is licensed under the [Mozilla Public License 2.0](./LICENSE).
+
+## References
+Inspired by https://www.haihai.ai/chatgpt-api/

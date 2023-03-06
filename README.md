@@ -6,7 +6,8 @@ This code is a program for creating a chatbot that interacts with the OpenAI API
 1. Clone this repository
 2. Install the required Python packages:
     ```
-    pip install openai
+    pip install -r requirements.txt
+    python3 -m spacy download en_core_web_sm
     ```
 3. Create an API key for OpenAI at https://beta.openai.com/signup/
 4. Run the script in the command line:

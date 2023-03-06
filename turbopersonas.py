@@ -2,26 +2,44 @@ import openai
 import os
 import argparse
 import configparser
+import logging
+
+# Configure the logger
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 red = "\033[31m"
 green = "\033[32m"
 blue = "\033[34m"
 code = "\033[36m"
 
-MAX_TOKEN_COUNT = 4096
-
 class Chatbot:
     """
     A class for creating and interacting with a chatbot.
+
+    Attributes:
+        model (str): The name of the OpenAI model to be used.
+        temperature (float): The temperature the OpenAI should use.
+        max_token_count (int): The maximum length of an input message in tokens.
+        messages (List[Dict]): The list of messages exchanged between the user and the chatbot.
     """
-    def __init__(self, model):
+    def __init__(self, model, temperature, max_token_count):
         """
         Initializes a new instance of the Chatbot class.
 
         Args:
-        - model (str): The name of the OpenAI model to be used.
+            model (str): The name of the OpenAI model to be used.
+            temperature (float): The temperature the OpenAI should use.
+            max_token_count (int): The maximum length of an input message in tokens.
         """
         self.model = model
+        self.temperature = temperature
+        self.max_token_count = max_token_count
         self.messages = []
     
     def start(self):
@@ -32,7 +50,7 @@ class Chatbot:
         try:
             system_msg = input(f"{blue}What type of chatbot would you like to create?{code} ")
         except:
-            print(f"{red}Invalid input, program ending{code}")
+            logger.error(f"{red}Invalid input, program ending{code}")
             return
         self.messages.append({"role": "system", "content": system_msg})
         # Print welcome message
@@ -43,14 +61,14 @@ class Chatbot:
             try:
                 message = input(f"{blue}> {code}")
             except KeyboardInterrupt:
-                print(f"{red}Ctrl+C pressed. Exiting.{code}")
+                logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
                 break
             except:
-                print(f"{red}Invalid input, please try again{code}")
+                logger.error(f"{red}Invalid input, please try again{code}")
                 continue
             # Check if user input exceeds maximum length and prompt for new input if true
-            if len(message.split()) > MAX_TOKEN_COUNT:
-                print(f"{red}Input exceeds maximum length of {MAX_TOKEN_COUNT} tokens. Please try again.{code}")
+            if len(message.split()) > self.max_token_count:
+                logger.error(f"{red}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{code}")
                 continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
@@ -66,39 +84,56 @@ class Chatbot:
             # Record user input and get assistant response
             self.messages.append({"role": "user", "content": message})
             response = self.get_response()
+            logger.debug(type(response))
             if response:
                 self.messages.append({"role": "assistant", "content": response})
                 # Print assistant response
                 print(f"\n{green}{response}{code}\n")
             else:
-                # Remove the last message from the messages list
-                self.messages.pop()
                 # Handle the error
-                print(f"{red}Error occurred while processing request. Please try again.{code}")
+                logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
 
     def get_response(self):
         """
         Gets a response from the OpenAI API.
-
         Returns:
         - str if successful, False if an error occurred.
         """
+        # create variables to collect the stream of chunks
+        collected_chunks = []
+        collected_messages = []
         try:
+            # Combine all user messages into a single string
+            messages = "".join([message["content"] for message in self.messages[-5:] if message["role"] == "user"])
+            message = [{"role": "user", "content": messages}]
+            # Send messages as a stream to the API
             response = openai.ChatCompletion.create(
                 model=self.model,
-                messages=self.messages)
-            return response["choices"][0]["message"]["content"]
+                messages=message,
+                temperature=self.temperature,
+                stream=True,
+                n=1,
+                stop=None,
+            )
+            # Combine all response chunks into a single string
+            for chunk in response:
+                collected_chunks.append(chunk)  # save the event response
+                chunk_message = chunk['choices'][0]['delta'] # extract the message
+                collected_messages.append(chunk_message)  # save the message
+            
+            response_text = ''.join([m.get('content', '') for m in collected_messages])
+            return response_text
         except openai.error.AuthenticationError:
-            print(f"{red}Authentication error: Invalid OpenAI API key{code}")
+            logger.error(f"{red}Authentication error: Invalid OpenAI API key{code}")
             return False
         except openai.error.InvalidRequestError as e:
-            print(f"{red}Invalid request error: {e}{code}")
+            logger.error(f"{red}Invalid request error: {e}{code}")
             return False
         except openai.error.APIError as e:
-            print(f"{red}API error: {e}{code}")
+            logger.error(f"{red}API error: {e}{code}")
             return False
         except Exception as e:
-            print(f"{red}Unknown error: {e}{code}")
+            logger.error(f"{red}Unknown error: {e}{code}")
             return False
     
     def get_multiline_input(self):
@@ -119,14 +154,14 @@ class Chatbot:
                     continue  # ignore empty lines
                 if line.strip() == "stop":
                     break
-                if token_count + len(line.split()) > MAX_TOKEN_COUNT:
-                    print(f"{red}Input exceeds maximum length of {MAX_TOKEN_COUNT} tokens. Please try again.{code}")
+                if token_count + len(line.split()) > self.max_token_count:
+                    logger.error(f"{red}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{code}")
                     return lines, interrupted
                 lines.append(line)
                 token_count += len(line.split())
         except KeyboardInterrupt:
             interrupted = True
-            print(f"{red}Ctrl+C pressed. Exiting.{code}")
+            logger.info(f"{red}Ctrl+C pressed. Exiting.{code}")
         return lines, interrupted
     
 def main():
@@ -134,20 +169,24 @@ def main():
     Parses command-line arguments and starts the chatbot.
     """
     parser = argparse.ArgumentParser(description="Chatbot CLI tool")
-    parser.add_argument('--model', default='gpt-3.5-turbo', type=str, help='The name of the model to be used')
+    parser.add_argument('--model', default='davinci', type=str, help='The name of the model to be used')
+    parser.add_argument('--temperature', default='0.9', type=float, help='The temperature for the model')
+    parser.add_argument('--max_tokens', default='50', type=int, help='The maximum amount of tokens')
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
     args = parser.parse_args()
+
     if args.api_key is None:
-        print(f"{red}OpenAI API key not found{code}")
-        return
+        parser.error("OpenAI API key not found")
+
     openai.api_key = args.api_key
+
     # Verify that the model exists
     models = openai.Model.list()
     model_names = [m.id for m in models['data']]
     if args.model not in model_names:
-        print(f"{red}Invalid model name{code}")
-        return
-    chatbot = Chatbot(args.model)
+        parser.error("Invalid model name")
+
+    chatbot = Chatbot(args.model, args.temperature, args.max_tokens)
     chatbot.start()
 
 if __name__ == '__main__':

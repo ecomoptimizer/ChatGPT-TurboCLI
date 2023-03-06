@@ -3,6 +3,9 @@ import os
 import argparse
 import configparser
 import logging
+import spacy
+from collections import Counter
+import tiktoken
 
 # Configure the logger
 logging.basicConfig(
@@ -17,6 +20,15 @@ red = "\033[31m"
 green = "\033[32m"
 blue = "\033[34m"
 code = "\033[36m"
+
+nlp = None
+enc = None
+
+def get_nlp():
+    global nlp
+    if not nlp:
+        nlp = spacy.load("en_core_web_sm")
+    return nlp
 
 class Chatbot:
     """
@@ -60,15 +72,14 @@ class Chatbot:
             # Get user input
             try:
                 message = input(f"{blue}> {code}")
+                if os.path.isfile(message):
+                    with open(message, 'r') as file:
+                        message = file.read()
             except KeyboardInterrupt:
                 logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
                 break
             except:
                 logger.error(f"{red}Invalid input, please try again{code}")
-                continue
-            # Check if user input exceeds maximum length and prompt for new input if true
-            if len(message.split()) > self.max_token_count:
-                logger.error(f"{red}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{code}")
                 continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
@@ -92,6 +103,7 @@ class Chatbot:
             else:
                 # Handle the error
                 logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
+                self.messages.pop()
 
     def get_response(self):
         """
@@ -102,9 +114,55 @@ class Chatbot:
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
+        completion_limit = 3072
+
         try:
-            # Combine all user messages into a single string
             messages = "".join([message["content"] for message in self.messages[-5:] if message["role"] == "user"])
+            if len(messages) + completion_limit > 4096:
+                logger.info("Running nlp analysis on input to extract keywords")
+                # Define the input and maximum completion token limits
+                input_text = messages
+
+                # Split the input into sentences and tokenize each sentence separately
+                sentences = input_text.split(".")
+
+                tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
+
+                # Calculate the total number of input tokens
+                input_tokens = sum([len(token) for token in tokens])
+
+                # Determine the maximum number of tokens allowed for completions
+                max_tokens = self.max_token_count
+                completion_tokens = max_tokens - input_tokens - completion_limit
+
+                # Truncate the input sentences to fit within the token limit
+                truncated_tokens = []
+                for token in tokens:
+                    if len(truncated_tokens) + len(token) <= completion_tokens:
+                        truncated_tokens.extend(token)
+                    else:
+                        break
+
+                # Extract the important keywords in the input
+                keywords = Counter()
+                for sentence in sentences:
+                    doc = get_nlp()(sentence)
+                    for ent in doc.ents:
+                        keywords[ent.text] += 1
+                    for token in doc:
+                        if token.pos_ in ["NOUN", "VERB", "ADJ"]:
+                            keywords[token.text] += 1
+
+                # Sort the keywords by frequency and prioritize the top ones
+                priority_keywords = [key for key, _ in keywords.most_common(5)]
+
+                # Construct the prompt with the truncated input and priority keywords
+                logger.debug(f"Length of messages before nlp analysis: {len(messages)}")
+                messages = f"Input: {input_text}\nKeywords: {' | '.join(priority_keywords)}\n\n"
+                logger.debug(f"Length of messages after nlp analysis: {len(messages)}")
+                logger.info("Analysis complete, sending to AI")
+
+            # Combine all user messages into a single string
             message = [{"role": "user", "content": messages}]
             # Send messages as a stream to the API
             response = openai.ChatCompletion.create(
@@ -185,6 +243,9 @@ def main():
     model_names = [m.id for m in models['data']]
     if args.model not in model_names:
         parser.error("Invalid model name")
+
+    global enc
+    enc = tiktoken.encoding_for_model(args.model)
 
     chatbot = Chatbot(args.model, args.temperature, args.max_tokens)
     chatbot.start()

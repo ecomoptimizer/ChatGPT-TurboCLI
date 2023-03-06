@@ -232,9 +232,9 @@ def main():
     Parses command-line arguments and starts the chatbot.
     """
     parser = argparse.ArgumentParser(description="Chatbot CLI tool")
-    parser.add_argument('--model', default='davinci', type=str, help='The name of the model to be used')
+    parser.add_argument('--model', default='gpt-3.5-turbo', type=str, help='The name of the model to be used')
     parser.add_argument('--temperature', default='0.9', type=float, help='The temperature for the model')
-    parser.add_argument('--max_tokens', default='50', type=int, help='The maximum amount of tokens')
+    parser.add_argument('--max_tokens', default='4096', type=int, help='The maximum amount of tokens')
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
     args = parser.parse_args()
 

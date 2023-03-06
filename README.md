@@ -26,25 +26,23 @@ When a response from OpenAI is received, it will be printed to the console in gr
 
 ### Example
 
-`python3 turbopersonas.py --api_key <api>`
-
->> What type of chatbot would you like to create? 
-
+`python3 turbopersonas.py --api_key <apikey> --model gpt-3.5-turbo-0301 --max_tokens 4096`
+```
+What type of chatbot would you like to create? 
 > coding wizard
+Hello! How can I assist you today? Are you looking for a coding wizard?
+> Yes. What kind of wizardry can you perform?
+As an AI language model, I can assist you with a wide range of programming languages including Python, Java, C++, JavaScript, HTML/CSS, and more. Here are some of the wizardry skills I possess:
+1. Debugging and testing code
+2. Implementing data structures and algorithms
+3. Developing web applications and APIs
+4. Building machine learning models and data analysis pipelines
+5. Creating and managing databases
+6. Automating repetitive tasks and workflows
+7. Designing user interfaces and user experiences
 
->> Say hello to your new assistant!
-
-> How do you code "hello world" in rust?
-
->> To print "Hello, world!" in Rust, you can use the `println!` macro:
->>
->>```rust
->>fn main() {
->>    println!("Hello, world!");
->>}
->>```
->>
->>When you run this program, it will print `Hello, world!` to the console.
+Let me know what kind of help you are looking for, and I'll be happy to assist you.
+```
 
 ## License
 

@@ -114,22 +114,19 @@ class Chatbot:
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
-        completion_limit = 3072
+        completion_limit = 2048
 
         try:
-            messages = "".join([message["content"] for message in self.messages[-5:] if message["role"] == "user"])
-            if len(messages) + completion_limit > 4096:
+            messages = "".join([message["content"] for message in self.messages[-5:]])
+            # Split the input into sentences and tokenize each sentence separately
+            sentences = messages.split(".")
+            tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
+            logger.debug(tokens)
+            # Calculate the total number of input tokens
+            input_tokens = sum([len(token) for token in tokens])
+            logger.debug(input_tokens)
+            if (input_tokens + completion_limit) > 4096:
                 logger.info("Running nlp analysis on input to extract keywords")
-                # Define the input and maximum completion token limits
-                input_text = messages
-
-                # Split the input into sentences and tokenize each sentence separately
-                sentences = input_text.split(".")
-
-                tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
-
-                # Calculate the total number of input tokens
-                input_tokens = sum([len(token) for token in tokens])
 
                 # Determine the maximum number of tokens allowed for completions
                 max_tokens = self.max_token_count
@@ -142,6 +139,7 @@ class Chatbot:
                         truncated_tokens.extend(token)
                     else:
                         break
+                logger.debug(truncated_tokens)
 
                 # Extract the important keywords in the input
                 keywords = Counter()
@@ -156,18 +154,25 @@ class Chatbot:
                 # Sort the keywords by frequency and prioritize the top ones
                 priority_keywords = [key for key, _ in keywords.most_common(5)]
 
-                # Construct the prompt with the truncated input and priority keywords
-                logger.debug(f"Length of messages before nlp analysis: {len(messages)}")
-                messages = f"Input: {input_text}\nKeywords: {' | '.join(priority_keywords)}\n\n"
-                logger.debug(f"Length of messages after nlp analysis: {len(messages)}")
+                logger.debug(f"Priority keywords: {priority_keywords}")
+                try:
+                    last_user_index = max([i for i, message in enumerate(self.messages) if message["role"] == "user"])
+                    if last_user_index is not None:
+                        self.messages[last_user_index]["content"] += f"Priority keywords: {priority_keywords}"
+                        logger.debug("Added priority keywords to user message")
+                except ValueError as e:
+                    logger.error(e)
+                    self.messages.append({"role": "user", "content": priority_keywords})
+
                 logger.info("Analysis complete, sending to AI")
 
             # Combine all user messages into a single string
-            message = [{"role": "user", "content": messages}]
+            #message = [{"role": "user", "content": messages}]
+            
             # Send messages as a stream to the API
             response = openai.ChatCompletion.create(
                 model=self.model,
-                messages=message,
+                messages=self.messages,
                 temperature=self.temperature,
                 stream=True,
                 n=1,

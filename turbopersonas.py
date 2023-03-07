@@ -1,13 +1,10 @@
 import openai
 import os
 import argparse
-import configparser
 import logging
 import spacy
 from collections import Counter
 import tiktoken
-from collections import deque
-import json
 
 # Configure the logger
 logging.basicConfig(
@@ -24,7 +21,7 @@ blue = "\033[34m"
 code = "\033[36m"
 
 nlp = None
-enc = None
+tokenizer = None
 
 def get_nlp():
     """
@@ -86,7 +83,7 @@ class Chatbot:
         roles = [message['role'] for message in self.messages]
         current_historic_chat = ' '.join(messages) + ' '.join(roles)
         sentences = current_historic_chat.split(".")
-        tokens = list(map(enc.encode, sentences))
+        tokens = list(map(tokenizer.encode, sentences))
         token_lengths = [len(token) for token in tokens]
         input_tokens = sum(token_lengths)
         return input_tokens
@@ -171,7 +168,7 @@ class Chatbot:
             messages = "".join([message["content"] for message in self.messages])
             # Split the input into sentences and tokenize each sentence separately
             sentences = messages.split(".")
-            tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
+            tokens = [tokenizer.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
             #logger.debug(tokens)
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
@@ -300,8 +297,8 @@ def main():
     if args.model not in model_names:
         parser.error("Invalid model name")
 
-    global enc
-    enc = tiktoken.encoding_for_model(args.model)
+    global tokenizer
+    tokenizer = tiktoken.encoding_for_model(args.model)
 
     chatbot = Chatbot(args.model, args.temperature, args.max_tokens)
     chatbot.start()

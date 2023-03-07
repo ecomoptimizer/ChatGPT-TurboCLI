@@ -27,6 +27,9 @@ nlp = None
 enc = None
 
 def get_nlp():
+    """
+    Returns a spaCy NLP object for the 'en_core_web_sm' model.
+    """
     global nlp
     if not nlp:
         nlp = spacy.load("en_core_web_sm")
@@ -55,8 +58,8 @@ class Chatbot:
         self.temperature = temperature
         self.max_token_count = max_token_count
         self.messages = []
-        self.recent_history = deque([])
-        self.kept_history = deque([])
+        self.assistant_mode = None
+        self.kept_history = []
 
     def add_to_history(self, message):
         """
@@ -65,16 +68,9 @@ class Chatbot:
             message (Dict): The message to be added.
         """
         # Add the new message to the recent history deque
-        self.recent_history.append(message)
+        self.kept_history.append(message)
+        self.messages.append(message)
         logger.debug(message)
-        # If the recent history deque is too long, move the oldest message to the kept history deque
-        while len(self.recent_history) > self.max_token_count:
-            oldest_message = self.recent_history.popleft()
-            self.kept_history.append(oldest_message)
-
-            # If the kept history deque is too long, remove the oldest message
-            while len(self.kept_history) > self.max_token_count:
-                self.kept_history.popleft()
     
     def remove_from_history(self):
         """
@@ -83,16 +79,17 @@ class Chatbot:
         if not self.messages:
             return
 
-        message = self.messages.pop()
+        self.messages.pop()
 
-        if message["role"] == "user":
-            # Remove the most recent user message from both history deques
-            self.recent_history.pop()
-            if not self.recent_history:
-                self.kept_history.pop()
-        elif message["role"] == "assistant":
-            # Remove the most recent assistant message from the recent history deque
-            self.recent_history.pop()
+    def calculate_tokens(self, messagelist):
+        messages = [message['content'] for message in messagelist]
+        roles = [message['role'] for message in self.messages]
+        current_historic_chat = ' '.join(messages) + ' '.join(roles)
+        sentences = current_historic_chat.split(".")
+        tokens = list(map(enc.encode, sentences))
+        token_lengths = [len(token) for token in tokens]
+        input_tokens = sum(token_lengths)
+        return input_tokens
 
     def start(self):
         """
@@ -104,7 +101,9 @@ class Chatbot:
         except:
             logger.error(f"{red}Invalid input, program ending{code}")
             return
-        self.add_to_history({"role": "system", "content": system_msg})
+        #self.add_to_history({"role": "system", "content": system_msg})
+        self.assistant_mode = {"role": "system", "content": system_msg}
+        self.add_to_history(self.assistant_mode)
         # Print welcome message
         print(f"Say hello to your new assistant!")
         # Loop to receive and respond to user input
@@ -118,27 +117,28 @@ class Chatbot:
             except KeyboardInterrupt:
                 logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
                 break
-            except:
-                logger.error(f"{red}Invalid input, please try again{code}")
+            except EOFError as e:
+                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                continue
+            except ValueError as e:
+                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
                 continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
                 break
+            # See the token usage for the CLI
             if "tokenusage" == message:
-                messages = [message['content'] for message in self.messages]
-                roles = [message['role'] for message in self.messages]
-                current_historic_chat = ' '.join(messages) + ' '.join(roles)
-                sentences = current_historic_chat.split(".")
-                tokens = list(map(enc.encode, sentences))
-                token_lengths = [len(token) for token in tokens]
-                input_tokens = sum(token_lengths)
-                logger.debug(f"Number of tokens in current history: {input_tokens}")
+                logger.info(f"Number of tokens in current chat: {self.calculate_tokens(self.messages)}")
+                logger.info(f"Number of tokens used for whole session: {self.calculate_tokens(self.kept_history)}")
+            # Start a new chat with the same assistant as defined on CLI launch
+            elif "newchat" == message:
+                self.messages = []
+                self.add_to_history(self.assistant_mode)
+                logger.debug("Chat messages has been cleared, ready for a new session.")
             else:
                 # Allow for multi-line input if user inputs "mlin"
                 if "mlin" == message:
                     message, interrupted = self.get_multiline_input()
-                    if message is None:
-                        break
                     if interrupted:
                         break
                     message = "\n".join(message)
@@ -168,13 +168,13 @@ class Chatbot:
         completion_limit = 2048
 
         try:
-            messages = "".join([message["content"] for message in self.messages[-5:]])
+            messages = "".join([message["content"] for message in self.messages])
             # Split the input into sentences and tokenize each sentence separately
             sentences = messages.split(".")
             tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
-            logger.debug(tokens)
+            #logger.debug(tokens)
             # Calculate the total number of input tokens
-            input_tokens = sum([len(token) for token in tokens])
+            input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
             if (input_tokens + completion_limit) > 4096:
                 logger.info("Running nlp analysis on input to extract keywords")

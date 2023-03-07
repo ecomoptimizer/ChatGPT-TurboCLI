@@ -6,6 +6,8 @@ import logging
 import spacy
 from collections import Counter
 import tiktoken
+from collections import deque
+import json
 
 # Configure the logger
 logging.basicConfig(
@@ -25,6 +27,9 @@ nlp = None
 enc = None
 
 def get_nlp():
+    """
+    Returns a spaCy NLP object for the 'en_core_web_sm' model.
+    """
     global nlp
     if not nlp:
         nlp = spacy.load("en_core_web_sm")
@@ -53,7 +58,39 @@ class Chatbot:
         self.temperature = temperature
         self.max_token_count = max_token_count
         self.messages = []
+        self.assistant_mode = None
+        self.kept_history = []
+
+    def add_to_history(self, message):
+        """
+        Adds a new message to the chat history.
+        Args:
+            message (Dict): The message to be added.
+        """
+        # Add the new message to the recent history deque
+        self.kept_history.append(message)
+        self.messages.append(message)
+        logger.debug(message)
     
+    def remove_from_history(self):
+        """
+        Removes the most recent message from the chat history.
+        """
+        if not self.messages:
+            return
+
+        self.messages.pop()
+
+    def calculate_tokens(self, messagelist):
+        messages = [message['content'] for message in messagelist]
+        roles = [message['role'] for message in self.messages]
+        current_historic_chat = ' '.join(messages) + ' '.join(roles)
+        sentences = current_historic_chat.split(".")
+        tokens = list(map(enc.encode, sentences))
+        token_lengths = [len(token) for token in tokens]
+        input_tokens = sum(token_lengths)
+        return input_tokens
+
     def start(self):
         """
         Starts the chatbot and receives user input.
@@ -64,7 +101,9 @@ class Chatbot:
         except:
             logger.error(f"{red}Invalid input, program ending{code}")
             return
-        self.messages.append({"role": "system", "content": system_msg})
+        #self.add_to_history({"role": "system", "content": system_msg})
+        self.assistant_mode = {"role": "system", "content": system_msg}
+        self.add_to_history(self.assistant_mode)
         # Print welcome message
         print(f"Say hello to your new assistant!")
         # Loop to receive and respond to user input
@@ -78,32 +117,44 @@ class Chatbot:
             except KeyboardInterrupt:
                 logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
                 break
-            except:
-                logger.error(f"{red}Invalid input, please try again{code}")
+            except EOFError as e:
+                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                continue
+            except ValueError as e:
+                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
                 continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
                 break
-            # Allow for multi-line input if user inputs "mlin"
-            if "mlin" in message:
-                message, interrupted = self.get_multiline_input()
-                if message is None:
-                    break
-                if interrupted:
-                    break
-                message = "\n".join(message)
-            # Record user input and get assistant response
-            self.messages.append({"role": "user", "content": message})
-            response = self.get_response()
-            logger.debug(type(response))
-            if response:
-                self.messages.append({"role": "assistant", "content": response})
-                # Print assistant response
-                print(f"\n{green}{response}{code}\n")
+            # See the token usage for the CLI
+            if "tokenusage" == message:
+                logger.info(f"Number of tokens in current chat: {self.calculate_tokens(self.messages)}")
+                logger.info(f"Number of tokens used for whole session: {self.calculate_tokens(self.kept_history)}")
+            # Start a new chat with the same assistant as defined on CLI launch
+            elif "newchat" == message:
+                self.messages = []
+                self.add_to_history(self.assistant_mode)
+                logger.debug("Chat messages has been cleared, ready for a new session.")
             else:
-                # Handle the error
-                logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
-                self.messages.pop()
+                # Allow for multi-line input if user inputs "mlin"
+                if "mlin" == message:
+                    message, interrupted = self.get_multiline_input()
+                    if interrupted:
+                        break
+                    message = "\n".join(message)
+
+                # Record user input and get assistant response
+                self.add_to_history({"role": "user", "content": message})
+                response = self.get_response()
+                logger.debug(type(response))
+                if response:
+                    self.add_to_history({"role": "assistant", "content": response})
+                    # Print assistant response
+                    print(f"\n{green}{response}{code}\n")
+                else:
+                    # Handle the error
+                    logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
+                    self.remove_from_history()
 
     def get_response(self):
         """
@@ -117,13 +168,13 @@ class Chatbot:
         completion_limit = 2048
 
         try:
-            messages = "".join([message["content"] for message in self.messages[-5:]])
+            messages = "".join([message["content"] for message in self.messages])
             # Split the input into sentences and tokenize each sentence separately
             sentences = messages.split(".")
             tokens = [enc.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
-            logger.debug(tokens)
+            #logger.debug(tokens)
             # Calculate the total number of input tokens
-            input_tokens = sum([len(token) for token in tokens])
+            input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
             if (input_tokens + completion_limit) > 4096:
                 logger.info("Running nlp analysis on input to extract keywords")

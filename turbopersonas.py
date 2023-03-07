@@ -217,21 +217,12 @@ class Chatbot:
                 # Generate a summary by combining the top-ranked sentences
                 summary_length = 20
                 summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+                summary = summary.replace('\n', ' ')
                 logger.debug(f"Summary: {summary}")
-                try:
-                    logger.debug("creating new message list")
-                    last_user_index = max([i for i, message in enumerate(self.messages) if message["role"] == "user"])
-                    last_user_message = self.messages[last_user_index]
-                    self.messages = []
-                    self.messages.append(self.assistant_mode)
-                    self.messages.append({"role": "user", "content": summary})
-                    #if last_user_index is not None:
-                    #    self.messages.append(last_user_message)
-                except ValueError as e:
-                    logger.error(e)
-                    self.messages = []
-                    self.messages.append(self.assistant_mode)
-                    self.messages.append({"role": "user", "content": historic_extraction})
+                logger.debug("creating new message list")
+                self.messages = []
+                self.messages.append(self.assistant_mode)
+                self.messages.append({"role": "user", "content": summary})
 
                 logger.info("Analysis complete, sending to AI")
 

@@ -38,7 +38,7 @@ Don't miss out on this opportunity to unleash your creativity and take your chat
 
 Note: If you encounter any errors while using the chatbot, refer to the error message displayed in the terminal for assistance.
 
-### Example
+### Example usage
 
 `python3 turbopersonas.py --api_key <apikey> --model gpt-3.5-turbo-0301 --max_tokens 4096`
 ```
@@ -57,6 +57,19 @@ As an AI language model, I can assist you with a wide range of programming langu
 
 Let me know what kind of help you are looking for, and I'll be happy to assist you.
 ```
+
+### Example of logging
+
+The logging is saved to disk and will look like this:
+```
+DEBUG: 2023-03-07 23:52:34,605 | get_response | line: 258 | [{'role': 'system', 'content': 'coding wizard'}, {'role': 'user', 'content': 'testing our brand new logging'}, {'role': 'assistant', 'content': "Great! Let's start by defining the purpose of the logging system. What kind of information do you want to log? Do you want to monitor errors or track user behavior? This will help us determine what kind of logging system to implement."}, {'role': 'user', 'content': 'Thanks'}]
+DEBUG: 2023-03-07 23:52:42,640 | start | line: 185 | <class 'str'>
+DEBUG: 2023-03-07 23:52:42,642 | add_to_history | line: 101 | {'role': 'assistant', 'content': "You're welcome! Once you have a clear purpose in mind, you can choose a logging framework to use. Some popular logging frameworks for different programming languages include:\n\n- Python: logging, loguru, structlog\n- Java: Log4j, Logback, java.util.logging\n- JavaScript: Winston, Bunyan, log4js\n\nOnce you have chosen a logging framework, you can start adding logging statements to your code. These statements will write messages to a log file or other destination when certain events occur, such as errors or user actions.\n\nIt is important to choose the appropriate logging level for each message. The most common levels are DEBUG, INFO, WARNING, ERROR, and CRITICAL. You may also want to include contextual information in your log messages, such as the user ID or timestamp.\n\nFinally, be sure to regularly review your logs to identify patterns or issues that may need attention. With a well-designed logging system in place, you can gain valuable insights into your application's performance and user behavior."}
+INFO: 2023-03-07 23:52:45,048 | start | line: 151 | [31mCtrl+C pressed. Exiting.[36m
+````
+
+Adjust the wanted level with `--log <LEVEL>`on launch.
+
 
 ## License
 

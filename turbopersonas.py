@@ -6,6 +6,8 @@ import logging
 import spacy
 from collections import Counter
 import tiktoken
+from collections import deque
+import json
 
 # Configure the logger
 logging.basicConfig(
@@ -53,7 +55,45 @@ class Chatbot:
         self.temperature = temperature
         self.max_token_count = max_token_count
         self.messages = []
+        self.recent_history = deque([])
+        self.kept_history = deque([])
+
+    def add_to_history(self, message):
+        """
+        Adds a new message to the chat history.
+        Args:
+            message (Dict): The message to be added.
+        """
+        # Add the new message to the recent history deque
+        self.recent_history.append(message)
+        logger.debug(message)
+        # If the recent history deque is too long, move the oldest message to the kept history deque
+        while len(self.recent_history) > self.max_token_count:
+            oldest_message = self.recent_history.popleft()
+            self.kept_history.append(oldest_message)
+
+            # If the kept history deque is too long, remove the oldest message
+            while len(self.kept_history) > self.max_token_count:
+                self.kept_history.popleft()
     
+    def remove_from_history(self):
+        """
+        Removes the most recent message from the chat history.
+        """
+        if not self.messages:
+            return
+
+        message = self.messages.pop()
+
+        if message["role"] == "user":
+            # Remove the most recent user message from both history deques
+            self.recent_history.pop()
+            if not self.recent_history:
+                self.kept_history.pop()
+        elif message["role"] == "assistant":
+            # Remove the most recent assistant message from the recent history deque
+            self.recent_history.pop()
+
     def start(self):
         """
         Starts the chatbot and receives user input.
@@ -64,7 +104,7 @@ class Chatbot:
         except:
             logger.error(f"{red}Invalid input, program ending{code}")
             return
-        self.messages.append({"role": "system", "content": system_msg})
+        self.add_to_history({"role": "system", "content": system_msg})
         # Print welcome message
         print(f"Say hello to your new assistant!")
         # Loop to receive and respond to user input
@@ -84,26 +124,37 @@ class Chatbot:
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
                 break
-            # Allow for multi-line input if user inputs "mlin"
-            if "mlin" in message:
-                message, interrupted = self.get_multiline_input()
-                if message is None:
-                    break
-                if interrupted:
-                    break
-                message = "\n".join(message)
-            # Record user input and get assistant response
-            self.messages.append({"role": "user", "content": message})
-            response = self.get_response()
-            logger.debug(type(response))
-            if response:
-                self.messages.append({"role": "assistant", "content": response})
-                # Print assistant response
-                print(f"\n{green}{response}{code}\n")
+            if "tokenusage" == message:
+                messages = [message['content'] for message in self.messages]
+                roles = [message['role'] for message in self.messages]
+                current_historic_chat = ' '.join(messages) + ' '.join(roles)
+                sentences = current_historic_chat.split(".")
+                tokens = list(map(enc.encode, sentences))
+                token_lengths = [len(token) for token in tokens]
+                input_tokens = sum(token_lengths)
+                logger.debug(f"Number of tokens in current history: {input_tokens}")
             else:
-                # Handle the error
-                logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
-                self.messages.pop()
+                # Allow for multi-line input if user inputs "mlin"
+                if "mlin" == message:
+                    message, interrupted = self.get_multiline_input()
+                    if message is None:
+                        break
+                    if interrupted:
+                        break
+                    message = "\n".join(message)
+
+                # Record user input and get assistant response
+                self.add_to_history({"role": "user", "content": message})
+                response = self.get_response()
+                logger.debug(type(response))
+                if response:
+                    self.add_to_history({"role": "assistant", "content": response})
+                    # Print assistant response
+                    print(f"\n{green}{response}{code}\n")
+                else:
+                    # Handle the error
+                    logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
+                    self.remove_from_history()
 
     def get_response(self):
         """

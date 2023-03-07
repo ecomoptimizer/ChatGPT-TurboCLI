@@ -13,15 +13,12 @@ nltk.download('stopwords')
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from nltk.probability import FreqDist
+from logging.handlers import RotatingFileHandler
+import datetime
 
-# Configure the logger
-logging.basicConfig(
-    level=logging.INFO, 
-    format='%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# Create logs directory if not exists
+if not os.path.exists("logs"):
+    os.makedirs("logs")
 
 red = "\033[31m"
 green = "\033[32m"
@@ -30,6 +27,7 @@ code = "\033[36m"
 
 nlp = None
 tokenizer = None
+logger = None
 
 def get_nlp():
     """
@@ -88,6 +86,12 @@ class Chatbot:
         self.messages.pop()
 
     def calculate_tokens(self, messagelist):
+        """
+        Calculates the amount of tokens used in messagelist.
+
+        Args:
+            messagelist (list): The list of message dicts to be counted for their tokens.
+        """
         messages = [message['content'] for message in messagelist]
         roles = [message['role'] for message in self.messages]
         current_historic_chat = ' '.join(messages) + ' '.join(roles)
@@ -126,7 +130,7 @@ class Chatbot:
                     message = message.decode('utf-8') # or any other encoding used in the file
                     logger.debug(message)
             except KeyboardInterrupt:
-                logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
+                logger.info(f"{red}Ctrl+C pressed. Exiting.{code}")
                 break
             except EOFError as e:
                 logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
@@ -148,7 +152,7 @@ class Chatbot:
             elif "newchat" == message:
                 self.messages = []
                 self.add_to_history(self.assistant_mode)
-                logger.debug("Chat messages has been cleared, ready for a new session.")
+                logger.info("Chat messages has been cleared, ready for a new session.")
             else:
                 # Allow for multi-line input if user inputs "mlin"
                 if "mlin" == message:
@@ -302,10 +306,18 @@ def main():
     parser.add_argument('--max_tokens', default='4096', type=int, help='The maximum amount of tokens')
     parser.add_argument('--completition_limit', default='1024', type=int, help='The max amount of tokens to be used for completition')
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
+    parser.add_argument('--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                    help='Set the logging level')
     args = parser.parse_args()
 
     if args.api_key is None:
         parser.error("OpenAI API key not found")
+
+    if args.loglevel:
+        numeric_level = getattr(logging, args.loglevel.upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError('Invalid log level: %s' % args.loglevel)
+        logging.basicConfig(level=numeric_level)
 
     openai.api_key = args.api_key
 
@@ -314,6 +326,34 @@ def main():
     model_names = [m.id for m in models['data']]
     if args.model not in model_names:
         parser.error("Invalid model name")
+
+    # Configure the logger
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    # Get current date in YYYY-MM-DD format
+    current_date = datetime.date.today().strftime("%Y-%m-%d")
+    # Create filename with current date
+    log_file = os.path.join("logs", f"logfile_{current_date}.log")
+    # Create rotating file handler with new file every day
+    file_handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=7)
+    # Set log level and message format
+    if args.loglevel:
+        numeric_level = getattr(logging, args.loglevel.upper(), None)
+        if not isinstance(numeric_level, int):
+            raise ValueError('Invalid log level: %s' % args.loglevel)
+        file_handler.setLevel(numeric_level)
+        logger.setLevel(numeric_level)
+    else:
+        file_handler.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s'))
+    # Add file handler to logger
+    logger.addHandler(file_handler)
 
     global tokenizer
     tokenizer = tiktoken.encoding_for_model(args.model)

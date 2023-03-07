@@ -50,7 +50,7 @@ class Chatbot:
         max_token_count (int): The maximum length of an input message in tokens.
         messages (List[Dict]): The list of messages exchanged between the user and the chatbot.
     """
-    def __init__(self, model, temperature, max_token_count):
+    def __init__(self, model, temperature, max_token_count, completition_limit):
         """
         Initializes a new instance of the Chatbot class.
 
@@ -65,6 +65,7 @@ class Chatbot:
         self.messages = []
         self.assistant_mode = None
         self.kept_history = []
+        self.completition_limit = completition_limit
 
     def add_to_history(self, message):
         """
@@ -178,7 +179,7 @@ class Chatbot:
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
-        completion_limit = 2048
+        completition_limit = self.completition_limit
 
         try:
             messages = "".join([message["content"] for message in self.messages])
@@ -189,7 +190,7 @@ class Chatbot:
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
-            if (input_tokens + completion_limit) > 4096:
+            if (input_tokens + completition_limit) > 4096:
                 logger.info("Running nlp analysis on input to extract keywords")
 
                 # Tokenize each sentence into words and remove stop words
@@ -299,6 +300,7 @@ def main():
     parser.add_argument('--model', default='gpt-3.5-turbo', type=str, help='The name of the model to be used')
     parser.add_argument('--temperature', default='0.9', type=float, help='The temperature for the model')
     parser.add_argument('--max_tokens', default='4096', type=int, help='The maximum amount of tokens')
+    parser.add_argument('--completition_limit', default='1024', type=int, help='The max amount of tokens to be used for completition')
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
     args = parser.parse_args()
 
@@ -316,7 +318,7 @@ def main():
     global tokenizer
     tokenizer = tiktoken.encoding_for_model(args.model)
 
-    chatbot = Chatbot(args.model, args.temperature, args.max_tokens)
+    chatbot = Chatbot(args.model, args.temperature, args.max_tokens, args.completition_limit)
     chatbot.start()
 
 if __name__ == '__main__':

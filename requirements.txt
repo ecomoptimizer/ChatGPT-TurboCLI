@@ -1,3 +1,5 @@
 openai
 spacy
 tiktoken
+nltk
+textract

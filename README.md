@@ -1,5 +1,11 @@
 # TurboPersonas
-This code is a program for creating a chatbot that interacts with the OpenAI API to generate responses. The chatbot can handle multi-line input, limit excessively long messages, and offers command-line arguments to select the preferred model and API key to be used. By following the simple command-line prompts, you can create your own conversational AI assistant without hassle.
+Introducing the ultimate coding wizard - a Python program that lets you create your very own chatbot using the powerful OpenAI API. With its seamless integration of the `openai` library, `spacy` for natural language processing, `textract` for file reading, and `nltk` for text tokenization and analysis, this program is the ultimate tool for creating and interacting with a chatbot. 
+
+Our sophisticated `Chatbot` class lets you effortlessly record messages, store chat history, and get AI-generated responses from OpenAI's industry-leading model. Whether you're looking to create a customer support chatbot, a virtual assistant for your home, or just want to experiment with cutting-edge AI technology, this program has you covered. 
+
+Plus, our command-line interface makes it easy for users of all skill levels to get started. Simply input your OpenAI API key, set your desired model and temperature, and let our program do the rest. You can even upload files for text analysis or input multiline messages for a truly personalized experience. 
+
+Don't miss out on this opportunity to unleash your creativity and take your chatbot game to the next level. Try our coding wizard now and experience the power of OpenAI at your fingertips.
 
 ## Installation
 
@@ -18,11 +24,19 @@ This code is a program for creating a chatbot that interacts with the OpenAI API
 
 ## Usage
 
-Once the script is running, the chatbot will prompt the user for the type of chatbot they would like to create. After selecting the type, the chatbot will begin accepting user input and responding with an appropriate message. Users can input "quit()" to exit the chatbot.
+- The chatbot will prompt you to enter the type of chatbot you would like to create. Enter your response and press enter.
 
-If the user types "mlin" they can input multiple lines of text by pressing return after each input. When they are finished typing input, they need to type "stop" on a separate line.
+- You can now start chatting with the chatbot. Type your messages and press enter to send them. The chatbot will respond with a message.
 
-When a response from OpenAI is received, it will be printed to the console in green text.
+- If you want to exit the chatbot, type `quit()` and press enter.
+
+- To see how many tokens have been used in the current chat or for the whole session, type `tokenusage` and press enter.
+
+- To start a new chat with the same assistant as defined on CLI launch, type `newchat` and press enter.
+
+- To input multiple lines at once, type `mlin` and then enter your message. Press `ctrl + D` to end the message.
+
+Note: If you encounter any errors while using the chatbot, refer to the error message displayed in the terminal for assistance.
 
 ### Example
 

@@ -101,6 +101,13 @@ class Chatbot:
         input_tokens = sum(token_lengths)
         return input_tokens
 
+    def calculate_summary_tokens(self, summary):
+        sentences = summary.split(".")
+        tokens = list(map(tokenizer.encode, sentences))
+        token_lengths = [len(token) for token in tokens]
+        input_tokens = sum(token_lengths)
+        return input_tokens
+
     def start(self):
         """
         Starts the chatbot and receives user input.
@@ -213,11 +220,32 @@ class Chatbot:
                     sentence_score = sum([freq_dist[word] for word in sentence_words])
                     ranked_sentences.append((sentence, sentence_score))
                 ranked_sentences.sort(key=lambda x: x[1], reverse=True)
-
+                logger.debug(f"ranked_senteces: {ranked_sentences}")
                 # Generate a summary by combining the top-ranked sentences
-                summary_length = 20
+                summary_length = 10
                 summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
                 summary = summary.replace('\n', ' ')
+                logger.debug(summary)
+                # Calculate current number of tokens
+                current_tokens = self.calculate_summary_tokens(summary)
+                logger.debug(f"Current_tokens: {current_tokens}")
+                # Increase summary length until token constraint is met
+                while (current_tokens + completition_limit) < 4096 and summary_length < len(ranked_sentences):
+                    summary_length += 1
+                    summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+                    summary = summary.replace('\n', ' ')
+                    current_tokens = self.calculate_summary_tokens(summary)
+
+                # If token constraint is exceeded, backtrack
+                while (current_tokens + completition_limit) > 4096 and summary_length > 1:
+                    summary_length -= 1
+                    summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+                    summary = summary.replace('\n', ' ')
+                    current_tokens = self.calculate_summary_tokens(summary)
+
+                # Finalize summary
+                #summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+                #summary = summary.replace('\n', ' ')
                 logger.debug(f"Summary: {summary}")
                 logger.debug("creating new message list")
                 self.messages = []

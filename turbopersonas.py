@@ -201,7 +201,7 @@ class Chatbot:
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
-            if (input_tokens + completition_limit) > 4096:
+            if (input_tokens + completition_limit) > self.max_token_count:
                 logger.info("Running nlp analysis on input to extract keywords")
 
                 # Tokenize each sentence into words and remove stop words
@@ -230,14 +230,14 @@ class Chatbot:
                 current_tokens = self.calculate_summary_tokens(summary)
                 logger.debug(f"Current_tokens: {current_tokens}")
                 # Increase summary length until token constraint is met
-                while (current_tokens + completition_limit) < 4096 and summary_length < len(ranked_sentences):
+                while (current_tokens + completition_limit) < self.max_token_count and summary_length < len(ranked_sentences):
                     summary_length += 1
                     summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
                     summary = summary.replace('\n', ' ')
                     current_tokens = self.calculate_summary_tokens(summary)
 
                 # If token constraint is exceeded, backtrack
-                while (current_tokens + completition_limit) > 4096 and summary_length > 1:
+                while (current_tokens + completition_limit) > self.max_token_count and summary_length > 1:
                     summary_length -= 1
                     summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
                     summary = summary.replace('\n', ' ')

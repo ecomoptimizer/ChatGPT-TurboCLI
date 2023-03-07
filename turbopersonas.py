@@ -5,6 +5,14 @@ import logging
 import spacy
 from collections import Counter
 import tiktoken
+from pathlib import Path
+import textract
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.corpus import stopwords
+from nltk.probability import FreqDist
 
 # Configure the logger
 logging.basicConfig(
@@ -108,9 +116,14 @@ class Chatbot:
             # Get user input
             try:
                 message = input(f"{blue}> {code}")
-                if os.path.isfile(message):
-                    with open(message, 'r') as file:
-                        message = file.read()
+                if message.startswith("file"):
+                    file_path = Path(message.split(" ", 1)[1].replace("'", ""))
+                    if not file_path.is_file():
+                        logger.error(f"{red}File not found: {file_path}{code}")
+                        continue
+                    message = textract.process(str(file_path))
+                    message = message.decode('utf-8') # or any other encoding used in the file
+                    logger.debug(message)
             except KeyboardInterrupt:
                 logger.info(f"\n{red}Ctrl+C pressed. Exiting.{code}")
                 break
@@ -118,6 +131,9 @@ class Chatbot:
                 logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
                 continue
             except ValueError as e:
+                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                continue
+            except IndexError as e:
                 logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
                 continue
             # Break out of loop if user inputs "quit()"
@@ -176,47 +192,47 @@ class Chatbot:
             if (input_tokens + completion_limit) > 4096:
                 logger.info("Running nlp analysis on input to extract keywords")
 
-                # Determine the maximum number of tokens allowed for completions
-                max_tokens = self.max_token_count
-                completion_tokens = max_tokens - input_tokens - completion_limit
-
-                # Truncate the input sentences to fit within the token limit
-                truncated_tokens = []
-                for token in tokens:
-                    if len(truncated_tokens) + len(token) <= completion_tokens:
-                        truncated_tokens.extend(token)
-                    else:
-                        break
-                logger.debug(truncated_tokens)
-
-                # Extract the important keywords in the input
-                keywords = Counter()
+                # Tokenize each sentence into words and remove stop words
+                stop_words = set(stopwords.words('english'))
+                words = []
                 for sentence in sentences:
-                    doc = get_nlp()(sentence)
-                    for ent in doc.ents:
-                        keywords[ent.text] += 1
-                    for token in doc:
-                        if token.pos_ in ["NOUN", "VERB", "ADJ"]:
-                            keywords[token.text] += 1
+                    words += [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
 
-                # Sort the keywords by frequency and prioritize the top ones
-                priority_keywords = [key for key, _ in keywords.most_common(5)]
+                # Calculate the frequency of each word
+                freq_dist = FreqDist(words)
 
-                logger.debug(f"Priority keywords: {priority_keywords}")
+                # Rank the sentences based on the frequency of their words
+                ranked_sentences = []
+                for sentence in sentences:
+                    sentence_words = [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
+                    sentence_score = sum([freq_dist[word] for word in sentence_words])
+                    ranked_sentences.append((sentence, sentence_score))
+                ranked_sentences.sort(key=lambda x: x[1], reverse=True)
+
+                # Generate a summary by combining the top-ranked sentences
+                summary_length = 20
+                summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+                logger.debug(f"Summary: {summary}")
                 try:
+                    logger.debug("creating new message list")
                     last_user_index = max([i for i, message in enumerate(self.messages) if message["role"] == "user"])
-                    if last_user_index is not None:
-                        self.messages[last_user_index]["content"] += f"Priority keywords: {priority_keywords}"
-                        logger.debug("Added priority keywords to user message")
+                    last_user_message = self.messages[last_user_index]
+                    self.messages = []
+                    self.messages.append(self.assistant_mode)
+                    self.messages.append({"role": "user", "content": summary})
+                    #if last_user_index is not None:
+                    #    self.messages.append(last_user_message)
                 except ValueError as e:
                     logger.error(e)
-                    self.messages.append({"role": "user", "content": priority_keywords})
+                    self.messages = []
+                    self.messages.append(self.assistant_mode)
+                    self.messages.append({"role": "user", "content": historic_extraction})
 
                 logger.info("Analysis complete, sending to AI")
 
             # Combine all user messages into a single string
             #message = [{"role": "user", "content": messages}]
-            
+            logger.debug(self.messages)
             # Send messages as a stream to the API
             response = openai.ChatCompletion.create(
                 model=self.model,

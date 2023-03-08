@@ -1,4 +1,7 @@
 # ChatGPT TurboCLI
+![image](https://user-images.githubusercontent.com/20763070/223877791-bbcc2a35-83c8-49ed-a42e-e59d8d34f806.png)
+
+
 Introducing the ultimate coding wizard - a Python program that lets you create your very own chatbot using the powerful OpenAI API. With its seamless integration of the `openai` library, `spacy` for natural language processing, `textract` for file reading, and `nltk` for text tokenization and analysis, this program is the ultimate tool for creating and interacting with a chatbot. 
 
 Our sophisticated `Chatbot` class lets you effortlessly record messages, store chat history, and get AI-generated responses from OpenAI's industry-leading model. Whether you're looking to create a customer support chatbot, a virtual assistant for your home, or just want to experiment with cutting-edge AI technology, this program has you covered. 

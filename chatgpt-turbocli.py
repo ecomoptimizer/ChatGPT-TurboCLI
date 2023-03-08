@@ -64,6 +64,7 @@ class Chatbot:
         self.assistant_mode = None
         self.kept_history = []
         self.completition_limit = completition_limit
+        self.sent_history = []
 
     def add_to_history(self, message):
         """
@@ -75,10 +76,13 @@ class Chatbot:
         self.kept_history.append(message)
         self.messages.append(message)
         logger.debug(message)
+
+    def add_to_sent(self, message):
+        self.sent_history.extend(message)
     
-    def remove_from_history(self):
+    def remove_from_messages(self):
         """
-        Removes the most recent message from the chat history.
+        Removes the most recent message from the current chat messages.
         """
         if not self.messages:
             return
@@ -92,6 +96,9 @@ class Chatbot:
         Args:
             messagelist (list): The list of message dicts to be counted for their tokens.
         """
+        logger.debug(messagelist)
+        if len(messagelist) == 0:
+            return 0
         messages = [message['content'] for message in messagelist]
         roles = [message['role'] for message in self.messages]
         current_historic_chat = ' '.join(messages) + ' '.join(roles)
@@ -153,13 +160,37 @@ class Chatbot:
                 break
             # See the token usage for the CLI
             if "tokenusage" == message:
+                kept_history_tokens = self.calculate_tokens(self.kept_history)
                 logger.info(f"Number of tokens in current chat: {self.calculate_tokens(self.messages)}")
-                logger.info(f"Number of tokens used for whole session: {self.calculate_tokens(self.kept_history)}")
+                logger.info(f"Number of tokens for whole session: {kept_history_tokens}")
+                sent_history_tokens = self.calculate_tokens(self.sent_history)
+                logger.debug(sent_history_tokens)
+                logger.debug(self.sent_history)
+                sent_tokens = kept_history_tokens - sent_history_tokens
+                logger.debug(sent_tokens)
+                if sent_tokens < 0:
+                    sent_tokens = 0
+                else:
+                    sent_tokens = sent_history_tokens
+                logger.debug(sent_tokens)
+                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}")
+                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}")
             # Start a new chat with the same assistant as defined on CLI launch
             elif "newchat" == message:
                 self.messages = []
                 self.add_to_history(self.assistant_mode)
                 logger.info("Chat messages has been cleared, ready for a new session.")
+            elif "newai" == message:
+                # Prompt user for type of chatbot they would like to create
+                try:
+                    system_msg = input(f"{blue}What type of chatbot would you like to create?{code} ")
+                except:
+                    logger.error(f"{red}Invalid input, program ending{code}")
+                    return
+                self.messages = []
+                self.assistant_mode = {"role": "system", "content": system_msg}
+                self.add_to_history(self.assistant_mode)
+                logger.info(f"New asistant mode set: {self.assistant_mode['content']}. Chat messages has been cleared, ready for a new session.")
             else:
                 # Allow for multi-line input if user inputs "mlin"
                 if "mlin" == message:
@@ -179,7 +210,7 @@ class Chatbot:
                 else:
                     # Handle the error
                     logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
-                    self.remove_from_history()
+                    self.remove_from_messages()
 
     def get_response(self):
         """
@@ -273,6 +304,7 @@ class Chatbot:
                 collected_messages.append(chunk_message)  # save the message
             
             response_text = ''.join([m.get('content', '') for m in collected_messages])
+            self.add_to_sent(self.messages)
             return response_text
         except openai.error.AuthenticationError:
             logger.error(f"{red}Authentication error: Invalid OpenAI API key{code}")
@@ -368,7 +400,7 @@ def main():
         file_handler.setLevel(numeric_level)
         logger.setLevel(numeric_level)
     else:
-        file_handler.setLevel(logging.INFO)
+        file_handler.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s'))
     # Add file handler to logger

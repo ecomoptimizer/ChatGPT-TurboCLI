@@ -173,8 +173,9 @@ class Chatbot:
                 else:
                     sent_tokens = sent_history_tokens
                 logger.debug(sent_tokens)
-                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}")
-                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}")
+                sent_tokens_price = sent_tokens / 1000 * 0.002
+                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price}.")
+                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price}.")
             # Start a new chat with the same assistant as defined on CLI launch
             elif "newchat" == message:
                 self.messages = []

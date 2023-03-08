@@ -41,6 +41,28 @@ Don't miss out on this opportunity to unleash your creativity and take your chat
 
 Note: If you encounter any errors while using the chatbot, refer to the error message displayed in the terminal for assistance.
 
+```
+usage: chatgpt-turbocli.py [-h] [--model MODEL] [--temperature TEMPERATURE] [--max_tokens MAX_TOKENS] [--completition_limit COMPLETITION_LIMIT]
+                           [--api_key API_KEY] [--log {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--transcript TRANSCRIPT]
+
+Chatbot CLI tool
+
+options:
+  -h, --help            show this help message and exit
+  --model MODEL         The name of the model to be used
+  --temperature TEMPERATURE
+                        The temperature for the model
+  --max_tokens MAX_TOKENS
+                        The maximum amount of tokens
+  --completition_limit COMPLETITION_LIMIT
+                        The max amount of tokens to be used for completition
+  --api_key API_KEY     The OpenAI API key
+  --log {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Set the logging level
+  --transcript TRANSCRIPT
+                        Write a transcript on exit?
+```
+
 ### Example usage
 
 `python3 turbopersonas.py --api_key <apikey> --model gpt-3.5-turbo-0301 --max_tokens 4096`

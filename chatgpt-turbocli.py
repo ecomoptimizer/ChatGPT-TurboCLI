@@ -20,10 +20,17 @@ import datetime
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-red = "\033[31m"
-green = "\033[32m"
-blue = "\033[34m"
-code = "\033[36m"
+# Create transcripts directory if not exists
+if not os.path.exists("transcripts"):
+    os.makedirs("transcripts")
+
+
+RED = "\033[31m"
+GREEN = "\033[32m"
+BLUE = "\033[34m"
+CODE = "\033[36m"
+GREY_BACKGROUND = '\033[48;5;240m'
+RESET_COLOR = '\033[0m'
 
 nlp = None
 tokenizer = None
@@ -48,7 +55,7 @@ class Chatbot:
         max_token_count (int): The maximum length of an input message in tokens.
         messages (List[Dict]): The list of messages exchanged between the user and the chatbot.
     """
-    def __init__(self, model, temperature, max_token_count, completition_limit):
+    def __init__(self, model, temperature, max_token_count, completition_limit, transcript):
         """
         Initializes a new instance of the Chatbot class.
 
@@ -65,6 +72,7 @@ class Chatbot:
         self.kept_history = []
         self.completition_limit = completition_limit
         self.sent_history = []
+        self.transcript = transcript
 
     def add_to_history(self, message):
         """
@@ -115,15 +123,56 @@ class Chatbot:
         input_tokens = sum(token_lengths)
         return input_tokens
 
+    def style_response(self, response):
+        """
+        Formats a response with styled code blocks and text.
+
+        :param response: The response to be formatted.
+        :type response: str
+        :return: The formatted response.
+        :rtype: str
+        """
+        code_block = "```"
+        in_code_block = False
+        new_response = ""
+        for line in response.split("\n"):
+            if line.startswith(code_block) and not in_code_block:
+                # open code block
+                new_response += f"{GREY_BACKGROUND}{GREEN}"
+                new_response += line + "\n"
+                in_code_block = True
+            elif line.startswith(code_block) and in_code_block:
+                # close code block
+                new_response += line + "\n"
+                new_response += "\033[0m"
+                in_code_block = False
+            elif in_code_block:
+                # add line inside code block
+                new_response += line + "\n"
+            else:
+                # add normal line with green text
+                new_response += f"{GREEN}{line}\033[0m\n"
+        return new_response
+
+    def output_transcript(self):
+        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        current_time = datetime.datetime.now().strftime("%H:%M")
+        transcript_file = os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")
+        with open(transcript_file, "w") as f:
+            f.write(f"Transcript for {current_date} - {current_time}\n\n")
+            for message in self.kept_history:
+                f.write(f"{message['role']}: {message['content']}\n")
+        print(f"Transcript saved to {transcript_file}")
+
     def start(self):
         """
         Starts the chatbot and receives user input.
         """
         # Prompt user for type of chatbot they would like to create
         try:
-            system_msg = input(f"{blue}What type of chatbot would you like to create?{code} ")
+            system_msg = input(f"{BLUE}What type of chatbot would you like to create?{CODE} ")
         except:
-            logger.error(f"{red}Invalid input, program ending{code}")
+            logger.error(f"{RED}Invalid input, program ending{CODE}")
             return
         #self.add_to_history({"role": "system", "content": system_msg})
         self.assistant_mode = {"role": "system", "content": system_msg}
@@ -134,29 +183,33 @@ class Chatbot:
         while True:
             # Get user input
             try:
-                message = input(f"{blue}> {code}")
+                message = input(f"{BLUE}> {CODE}")
                 if message.startswith("file"):
                     file_path = Path(message.split(" ", 1)[1].replace("'", ""))
                     if not file_path.is_file():
-                        logger.error(f"{red}File not found: {file_path}{code}")
+                        logger.error(f"{RED}File not found: {file_path}{CODE}")
                         continue
                     message = textract.process(str(file_path))
                     message = message.decode('utf-8') # or any other encoding used in the file
                     logger.debug(message)
             except KeyboardInterrupt:
-                logger.info(f"{red}Ctrl+C pressed. Exiting.{code}")
+                logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
+                if self.transcript:
+                    self.output_transcript()
                 break
             except EOFError as e:
-                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
                 continue
             except ValueError as e:
-                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
                 continue
             except IndexError as e:
-                logger.error(f"{red}Invalid input, please try again. Error code {e} {code}")
+                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
                 continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
+                if self.transcript:
+                    self.output_transcript()
                 break
             # See the token usage for the CLI
             if "tokenusage" == message:
@@ -174,8 +227,8 @@ class Chatbot:
                     sent_tokens = sent_history_tokens
                 logger.debug(sent_tokens)
                 sent_tokens_price = sent_tokens / 1000 * 0.002
-                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price}.")
-                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price}.")
+                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
+                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
             # Start a new chat with the same assistant as defined on CLI launch
             elif "newchat" == message:
                 self.messages = []
@@ -184,9 +237,9 @@ class Chatbot:
             elif "newai" == message:
                 # Prompt user for type of chatbot they would like to create
                 try:
-                    system_msg = input(f"{blue}What type of chatbot would you like to create?{code} ")
+                    system_msg = input(f"{BLUE}What type of chatbot would you like to create?{CODE} ")
                 except:
-                    logger.error(f"{red}Invalid input, program ending{code}")
+                    logger.error(f"{RED}Invalid input, program ending{CODE}")
                     return
                 self.messages = []
                 self.assistant_mode = {"role": "system", "content": system_msg}
@@ -207,10 +260,11 @@ class Chatbot:
                 if response:
                     self.add_to_history({"role": "assistant", "content": response})
                     # Print assistant response
-                    print(f"\n{green}{response}{code}\n")
+                    #print(f"\n{GREEN}{response}{CODE}\n")
+                    print(self.style_response(response))
                 else:
                     # Handle the error
-                    logger.error(f"{red}Error occurred while processing request. Please try again.{code}")
+                    logger.error(f"{RED}Error occurred while processing request. Please try again.{CODE}")
                     self.remove_from_messages()
 
     def get_response(self):
@@ -228,7 +282,7 @@ class Chatbot:
             messages = "".join([message["content"] for message in self.messages])
             # Split the input into sentences and tokenize each sentence separately
             sentences = messages.split(".")
-            tokens = [tokenizer.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
+            #tokens = [tokenizer.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
             #logger.debug(tokens)
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
@@ -308,16 +362,16 @@ class Chatbot:
             self.add_to_sent(self.messages)
             return response_text
         except openai.error.AuthenticationError:
-            logger.error(f"{red}Authentication error: Invalid OpenAI API key{code}")
+            logger.error(f"{RED}Authentication error: Invalid OpenAI API key{CODE}")
             return False
         except openai.error.InvalidRequestError as e:
-            logger.error(f"{red}Invalid request error: {e}{code}")
+            logger.error(f"{RED}Invalid request error: {e}{CODE}")
             return False
         except openai.error.APIError as e:
-            logger.error(f"{red}API error: {e}{code}")
+            logger.error(f"{RED}API error: {e}{CODE}")
             return False
         except Exception as e:
-            logger.error(f"{red}Unknown error: {e}{code}")
+            logger.error(f"{RED}Unknown error: {e}{CODE}")
             return False
     
     def get_multiline_input(self):
@@ -327,25 +381,25 @@ class Chatbot:
         Returns:
         - tuple: (list of strings or None, boolean)
         """
-        print(f"{green}Enter lines of text. Type {blue}\"stop\"{green} on a separate line to finish.{code}")
+        print(f"{GREEN}Enter lines of text. Type {BLUE}\"stop\"{GREEN} on a separate line to finish.{CODE}")
         lines = []
         token_count = 0
         interrupted = False
         try:
             while True:
-                line = input(f"{blue}> {code}")
+                line = input(f"{BLUE}> {CODE}")
                 if not line.strip():
                     continue  # ignore empty lines
                 if line.strip() == "stop":
                     break
                 if token_count + len(line.split()) > self.max_token_count:
-                    logger.error(f"{red}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{code}")
+                    logger.error(f"{RED}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{CODE}")
                     return lines, interrupted
                 lines.append(line)
                 token_count += len(line.split())
         except KeyboardInterrupt:
             interrupted = True
-            logger.info(f"{red}Ctrl+C pressed. Exiting.{code}")
+            logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
         return lines, interrupted
     
 def main():
@@ -360,6 +414,7 @@ def main():
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
     parser.add_argument('--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                     help='Set the logging level')
+    parser.add_argument('--transcript', default='True', type=bool, help='Write a transcript on exit?')
     args = parser.parse_args()
 
     if args.api_key is None:
@@ -398,11 +453,11 @@ def main():
         numeric_level = getattr(logging, args.loglevel.upper(), None)
         if not isinstance(numeric_level, int):
             raise ValueError('Invalid log level: %s' % args.loglevel)
-        file_handler.setLevel(numeric_level)
+        #file_handler.setLevel(numeric_level)
         logger.setLevel(numeric_level)
     else:
-        file_handler.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s'))
     # Add file handler to logger
     logger.addHandler(file_handler)
@@ -410,7 +465,7 @@ def main():
     global tokenizer
     tokenizer = tiktoken.encoding_for_model(args.model)
 
-    chatbot = Chatbot(args.model, args.temperature, args.max_tokens, args.completition_limit)
+    chatbot = Chatbot(args.model, args.temperature, args.max_tokens, args.completition_limit, args.transcript)
     chatbot.start()
 
 if __name__ == '__main__':

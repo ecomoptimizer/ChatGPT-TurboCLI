@@ -1,9 +1,33 @@
 # ChatGPT TurboCLI
 ![image](https://user-images.githubusercontent.com/20763070/223877791-bbcc2a35-83c8-49ed-a42e-e59d8d34f806.png)
 
+## Key features
 
-This Python program enables easy creation of a chatbot with the OpenAI API. The CLI provides a clean and customizable interface for efficient and smooth communication with the chatbot. The program is highly versatile and integrates seamlessly with popular libraries, such as NLTK, for natural language processing, text extraction, tokenization, and summarization. The program also has transcripts and logging features that enable users to track and analyze chatbot 
-performance.
+This AI Chatbot application is designed to provide a seamless and effective communication experience. Here are the key features of the application:        
+
+### Token Usage for Cost Calculation
+Token usage acts as a cost calculator in the application, allowing you to keep track of the number of tokens used and the corresponding cost.
+
+### Transcripts to View Communication History
+The transcripts feature enables you to view your historic questions and outputs, making it easier to keep track of your communication history and to refer back to previous interactions with the chatbot.
+
+### Logs for Debugging
+Logs contain detailed records of all interactions with the application, including input and output data and any errors that occur during processing. The logs feature is useful for debugging purposes in case of errors.
+
+### File Input for Analysis of Reports
+The file input feature enables you to analyze a wide range of text data, including financial reports, news reports, source code, etc. This makes it a powerful tool for data analysis and generating insights.
+
+### Multiline Input for Quick Paste
+Multiline input makes it easier and quicker to paste in large amounts of data or text, such as source code or other complex text data.
+
+### Chat History for Context-Aware Communication
+The chat history feature keeps track of previous interactions with users, allowing the chatbot to be more context-aware in its responses. This makes for a more natural and intuitive user experience.
+
+### Summarization for Large File Input
+The application can summarize large text files using natural language processing techniques. This makes it easier to work with large data sets and identify important trends and insights.
+
+### Adjustable Completion Tokens for Customization
+Completion tokens make it easier to work with text data by suggesting common word or phrase completions. With adjustable completion tokens, you can customize the suggestions to match your specific needs and preferences. It helps the chatbot to use the number of tokens that you prefer for generating outputs.  
 
 ## Installation
 

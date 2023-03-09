@@ -353,6 +353,7 @@ class Chatbot:
                 stream=True,
                 n=1,
                 stop=None,
+                max_tokens=self.completition_limit
             )
             # Combine all response chunks into a single string
             for chunk in response:

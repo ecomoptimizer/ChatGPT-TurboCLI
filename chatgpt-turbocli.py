@@ -63,7 +63,7 @@ def save_transcript(kept_history):
     transcript_file = create_transcript_filename(current_date, current_time)
     if kept_history:
         try:
-            with open(transcript_file, "a+") as f:
+            with open(transcript_file, "a+", encoding="utf-8") as f:
                 f.write(f"Transcript for {current_date} - {current_time}\n\n")
                 for message in kept_history:
                     f.write(f"{message['role']}: {message['content']}\n")
@@ -195,28 +195,6 @@ class Chatbot:
                 # add normal line with green text
                 new_response += f"{GREEN}{line}\033[0m\n"
         return new_response
-
-    def output_transcript(self):
-        """
-        output_transcript function writes a transcript of the chat conversation to a markdown file in the 'transcripts' folder. The file name is composed of the current date and time.
-
-        Returns:
-        - None. However, the transcript is written to a markdown file in the transcripts folder.
-
-        Example:
-        output_transcript()
-        # Output: Transcript saved to transcripts/transcript_2022-10-07_16-30.md
-        """
-        current_date = datetime.date.today().strftime("%Y-%m-%d")
-        current_time = datetime.datetime.now().strftime("%H-%m")
-        transcript_file = os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")
-        with open(transcript_file, "a+") as f:
-            f.write(f"Transcript for {current_date} - {current_time}\n\n")
-            logger.debug(f"Transcript for {current_date} - {current_time}\n\n")
-            for message in self.kept_history:
-                f.write(f"{message['role']}: {message['content']}\n")
-                logger.debug(f"{message['role']}: {message['content']}\n")
-        print(f"Transcript saved to {transcript_file}")
 
     def start(self):
         """

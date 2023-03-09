@@ -16,15 +16,6 @@ from nltk.probability import FreqDist
 from logging.handlers import RotatingFileHandler
 import datetime
 
-# Create logs directory if not exists
-if not os.path.exists("logs"):
-    os.makedirs("logs")
-
-# Create transcripts directory if not exists
-if not os.path.exists("transcripts"):
-    os.makedirs("transcripts")
-
-
 RED = "\033[31m"
 GREEN = "\033[32m"
 BLUE = "\033[34m"
@@ -44,6 +35,43 @@ def get_nlp():
     if not nlp:
         nlp = spacy.load("en_core_web_sm")
     return nlp
+
+def create_transcript_filename(current_date, current_time):
+    """Creates a filename for the transcript file.
+
+       Args:
+           current_date (str): The current date in the format YYYY-MM-DD.
+           current_time (str): The current time in the format HH:MM.
+
+       Returns:
+           str: The full path to the transcript file.
+    """
+    return os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")
+
+def save_transcript(kept_history):
+    """Saves a transcript of the chat history to a file.
+
+       Args:
+           kept_history (list): A list of chat messages, where each message is a dictionary with
+           'role' (str) and 'content' (str) keys.
+
+       Returns:
+           None.
+    """
+    current_date = datetime.date.today().strftime("%Y-%m-%d")
+    current_time = datetime.datetime.now().strftime("%H-%M")
+    transcript_file = create_transcript_filename(current_date, current_time)
+    if kept_history:
+        try:
+            with open(transcript_file, "a+") as f:
+                f.write(f"Transcript for {current_date} - {current_time}\n\n")
+                for message in kept_history:
+                    f.write(f"{message['role']}: {message['content']}\n")
+            print(f"Transcript saved to {transcript_file}")
+        except (IOError, PermissionError) as e:
+            print(f"Error saving transcript: {str(e)}")
+        finally:
+            f.close()
 
 class Chatbot:
     """
@@ -156,12 +184,14 @@ class Chatbot:
 
     def output_transcript(self):
         current_date = datetime.date.today().strftime("%Y-%m-%d")
-        current_time = datetime.datetime.now().strftime("%H:%m")
+        current_time = datetime.datetime.now().strftime("%H-%m")
         transcript_file = os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")
-        with open(transcript_file, "w") as f:
+        with open(transcript_file, "a+") as f:
             f.write(f"Transcript for {current_date} - {current_time}\n\n")
+            logger.debug(f"Transcript for {current_date} - {current_time}\n\n")
             for message in self.kept_history:
                 f.write(f"{message['role']}: {message['content']}\n")
+                logger.debug(f"{message['role']}: {message['content']}\n")
         print(f"Transcript saved to {transcript_file}")
 
     def start(self):
@@ -195,7 +225,7 @@ class Chatbot:
             except KeyboardInterrupt:
                 logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
                 if self.transcript:
-                    self.output_transcript()
+                    save_transcript(self.kept_history)
                 break
             except EOFError as e:
                 logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
@@ -206,10 +236,13 @@ class Chatbot:
             except IndexError as e:
                 logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
                 continue
+            except Exception as e:
+                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
+                continue
             # Break out of loop if user inputs "quit()"
             if message == "quit()":
                 if self.transcript:
-                    self.output_transcript()
+                    save_transcript(self.kept_history)
                 break
             # See the token usage for the CLI
             if "tokenusage" == message:
@@ -418,6 +451,7 @@ def main():
     parser.add_argument('--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                     help='Set the logging level')
     parser.add_argument('--transcript', default='True', type=bool, help='Write a transcript on exit?')
+    parser.add_argument('--logenabled', default='True', type=bool, help="Logging enabled")
     args = parser.parse_args()
 
     if args.api_key is None:
@@ -437,33 +471,41 @@ def main():
     if args.model not in model_names:
         parser.error("Invalid model name")
 
-    # Configure the logger
-    global logger
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    # Get current date in YYYY-MM-DD format
-    current_date = datetime.date.today().strftime("%Y-%m-%d")
-    # Create filename with current date
-    log_file = os.path.join("logs", f"logfile_{current_date}.log")
-    # Create rotating file handler with new file every day
-    file_handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=7)
-    # Set log level and message format
-    if args.loglevel:
-        numeric_level = getattr(logging, args.loglevel.upper(), None)
-        if not isinstance(numeric_level, int):
-            raise ValueError('Invalid log level: %s' % args.loglevel)
-        #file_handler.setLevel(numeric_level)
-        logger.setLevel(numeric_level)
-    else:
+    if args.logenabled:
+        # Configure the logger
+        # Create logs directory if not exists
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+        global logger
+        logger = logging.getLogger(__name__)
         logger.setLevel(logging.DEBUG)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s'))
-    # Add file handler to logger
-    logger.addHandler(file_handler)
+        formatter = logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s')
+        handler = logging.StreamHandler()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        # Get current date in YYYY-MM-DD format
+        current_date = datetime.date.today().strftime("%Y-%m-%d")
+        # Create filename with current date
+        log_file = os.path.join("logs", f"logfile_{current_date}.log")
+        # Create rotating file handler with new file every day
+        file_handler = RotatingFileHandler(log_file, maxBytes=1000000, backupCount=7)
+        # Set log level and message format
+        if args.loglevel:
+            numeric_level = getattr(logging, args.loglevel.upper(), None)
+            if not isinstance(numeric_level, int):
+                raise ValueError('Invalid log level: %s' % args.loglevel)
+            logger.setLevel(numeric_level)
+        else:
+            logger.setLevel(logging.DEBUG)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(logging.Formatter('%(levelname)s: %(asctime)s | %(funcName)s | line: %(lineno)d | %(message)s'))
+        # Add file handler to logger
+        logger.addHandler(file_handler)
+
+    if args.transcript:
+        # Create transcripts directory if not exists
+        if not os.path.exists("transcripts"):
+            os.makedirs("transcripts")
 
     global tokenizer
     tokenizer = tiktoken.encoding_for_model(args.model)

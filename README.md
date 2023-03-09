@@ -1,56 +1,20 @@
 # ChatGPT TurboCLI
 
 ## Key features
+ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and analysts with their work. This tool offers a variety of features including file input analysis, multiline input, chat history, and summarization of large text data. The tool is built on OpenAI's ChatGPT-3.5-turbo model and uses natural language processing techniques to provide useful insights and suggestions. With ChatGPT TurboCLI, users can improve their productivity and efficiency in coding, writing, and data analysis.
 
-This AI Chatbot application is designed to provide a seamless and effective communication experience. Here are the key features of the application:        
-
-### File Input for Analysis of Reports
-The file input feature enables you to analyze a wide range of text data, including financial reports, news reports, source code, etc. This makes it a powerful tool for data analysis and generating insights.
-
-### Multiline Input for Quick Paste
-Multiline input makes it easier and quicker to paste in large amounts of data or text, such as source code or other complex text data.
-
-### Chat History for Context-Aware Communication
-The chat history feature keeps track of previous interactions with users, allowing the chatbot to be more context-aware in its responses. This makes for a more natural and intuitive user experience.
-
-### Summarization for Large File Input
-The application can summarize large text files using natural language processing techniques. This makes it easier to work with large data sets and identify important trends and insights.
-
-## Table of Contents
-
-- [ChatGPT TurboCLI](#chatgpt-turbocli)
-  - [Key features](#key-features)
-    - [File Input for Analysis of Reports](#file-input-for-analysis-of-reports)
-    - [Multiline Input for Quick Paste](#multiline-input-for-quick-paste)
-    - [Chat History for Context-Aware Communication](#chat-history-for-context-aware-communication)
-    - [Summarization for Large File Input](#summarization-for-large-file-input)
-  - [Table of Contents](#table-of-contents)
-    - [Quality of life functionality](#quality-of-life-functionality)
-      - [Token Usage for Cost Calculation](#token-usage-for-cost-calculation)
-      - [Transcripts to View Communication History](#transcripts-to-view-communication-history)
-      - [Logs for Debugging](#logs-for-debugging)
-      - [Adjustable Completion Tokens for Customization](#adjustable-completion-tokens-for-customization)
-  - [Installation](#installation)
-  - [Usage](#usage)
-    - [Example usage](#example-usage)
-    - [Example of logging](#example-of-logging)
-  - [License](#license)
-  - [References](#references)
-
-
-### Quality of life functionality
-
-#### Token Usage for Cost Calculation
-Token usage acts as a cost calculator in the application, allowing you to keep track of the number of tokens used and the corresponding cost.
-
-#### Transcripts to View Communication History
-The transcripts feature enables you to view your historic questions and outputs, making it easier to keep track of your communication history and to refer back to previous interactions with the chatbot.
-
-#### Logs for Debugging
-Logs contain detailed records of all interactions with the application, including input and output data and any errors that occur during processing. The logs feature is useful for debugging purposes in case of errors.
-
-#### Adjustable Completion Tokens for Customization
-Completion tokens make it easier to work with text data by suggesting common word or phrase completions. With adjustable completion tokens, you can customize the suggestions to match your specific needs and preferences. It helps the chatbot to use the number of tokens that you prefer for generating outputs.  
+| Feature | Benefits | Status |
+| --- | --- | --- |
+| File Input for Analysis of Reports | Enables analysis of a wide range of text data including financial reports, news reports, source code, etc. | Implemented |
+| Multiline Input for Quick Paste | Allows quick and easy pasting of large amounts of data or complex text data. | Implemented |
+| Summarization for Large File Input | Summarizes large text files using natural language processing techniques to identify important trends and insights. | Implemented (Using `textract` module - working on MacOS & Linus, windows not supported) |
+| Token Usage for Cost Calculation | Calculates the number of tokens used and their associated cost in the application. | Implemented |
+| Adjustable Completion Tokens for Customization | Adjusts how large of an output from model you want at most. | Implemented |
+| Chat History for Context-Aware Communication | Keeps track of previous interactions with users, allowing the chatbot to provide more natural and intuitive responses. | Implemented |
+| Transcripts to View Communication History | Provides historic questions and outputs, allowing for easier tracking of communication history and referencing of previous interactions with the chatbot. | Implemented |
+| Logs for Debugging | Detailed records of all interactions with the application, including input and output data and any errors that occur during processing. Useful for debugging purposes in case of errors. | Implemented |
+| Toggleable logging | Choose if you want logging at all | Not started |
+| Summarization on any input over x length | Summarize any input that are exceeding a given length to optimize token usage. | Not started |
 
 ## Installation
 

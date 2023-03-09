@@ -156,7 +156,7 @@ class Chatbot:
 
     def output_transcript(self):
         current_date = datetime.date.today().strftime("%Y-%m-%d")
-        current_time = datetime.datetime.now().strftime("%H:%M")
+        current_time = datetime.datetime.now().strftime("%H:%m")
         transcript_file = os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")
         with open(transcript_file, "w") as f:
             f.write(f"Transcript for {current_date} - {current_time}\n\n")

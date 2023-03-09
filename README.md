@@ -13,7 +13,7 @@ ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and a
 | Chat History for Context-Aware Communication | Keeps track of previous interactions with users, allowing the chatbot to provide more natural and intuitive responses. | Implemented |
 | Transcripts to View Communication History | Provides historic questions and outputs, allowing for easier tracking of communication history and referencing of previous interactions with the chatbot. | Implemented |
 | Logs for Debugging | Detailed records of all interactions with the application, including input and output data and any errors that occur during processing. Useful for debugging purposes in case of errors. | Implemented |
-| Toggleable logging | Choose if you want logging at all | Not started |
+| Toggleable logging | Choose if you want logging at all | Implemented |
 | Summarization on any input over x length | Summarize any input that are exceeding a given length to optimize token usage. | Not started |
 
 ## Installation

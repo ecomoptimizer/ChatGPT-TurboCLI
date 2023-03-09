@@ -145,6 +145,20 @@ class Chatbot:
         return input_tokens
 
     def calculate_summary_tokens(self, summary):
+        """
+        calculate_summary_tokens function takes a summary as input and calculates the total number of input_tokens required to encode the summary, using a pre-trained tokenizer.
+
+        Parameters:
+        - summary: a string containing the summary to be tokenized.
+
+        Returns:
+        - input_tokens: an integer representing the total number of input_tokens required to encode the summary.
+
+        Example:
+        summary = "The quick brown fox. Jumped over the lazy dog."
+        input_tokens = calculate_summary_tokens(summary)
+        print(input_tokens) # Output: 12
+        """
         sentences = summary.split(".")
         tokens = list(map(tokenizer.encode, sentences))
         token_lengths = [len(token) for token in tokens]
@@ -183,6 +197,16 @@ class Chatbot:
         return new_response
 
     def output_transcript(self):
+        """
+        output_transcript function writes a transcript of the chat conversation to a markdown file in the 'transcripts' folder. The file name is composed of the current date and time.
+
+        Returns:
+        - None. However, the transcript is written to a markdown file in the transcripts folder.
+
+        Example:
+        output_transcript()
+        # Output: Transcript saved to transcripts/transcript_2022-10-07_16-30.md
+        """
         current_date = datetime.date.today().strftime("%Y-%m-%d")
         current_time = datetime.datetime.now().strftime("%H-%m")
         transcript_file = os.path.join("transcripts", f"transcript_{current_date}_{current_time}.md")

@@ -2,13 +2,8 @@
 ![image](https://user-images.githubusercontent.com/20763070/223877791-bbcc2a35-83c8-49ed-a42e-e59d8d34f806.png)
 
 
-Introducing the ultimate coding wizard - a Python program that lets you create your very own chatbot using the powerful OpenAI API. With its seamless integration of the `openai` library, `spacy` for natural language processing, `textract` for file reading, and `nltk` for text tokenization and analysis, this program is the ultimate tool for creating and interacting with a chatbot. 
-
-Our sophisticated `Chatbot` class lets you effortlessly record messages, store chat history, and get AI-generated responses from OpenAI's industry-leading model. Whether you're looking to create a customer support chatbot, a virtual assistant for your home, or just want to experiment with cutting-edge AI technology, this program has you covered. 
-
-Plus, our command-line interface makes it easy for users of all skill levels to get started. Simply input your OpenAI API key, set your desired model and temperature, and let our program do the rest. You can even upload files for text analysis or input multiline messages for a truly personalized experience. 
-
-Don't miss out on this opportunity to unleash your creativity and take your chatbot game to the next level. Try our coding wizard now and experience the power of OpenAI at your fingertips.
+This Python program enables easy creation of a chatbot with the OpenAI API. The CLI provides a clean and customizable interface for efficient and smooth communication with the chatbot. The program is highly versatile and integrates seamlessly with popular libraries, such as NLTK, for natural language processing, text extraction, tokenization, and summarization. The program also has transcripts and logging features that enable users to track and analyze chatbot 
+performance.
 
 ## Installation
 

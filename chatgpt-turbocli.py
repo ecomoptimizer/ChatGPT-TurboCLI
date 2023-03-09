@@ -234,6 +234,7 @@ class Chatbot:
                 self.messages = []
                 self.add_to_history(self.assistant_mode)
                 logger.info("Chat messages has been cleared, ready for a new session.")
+                print("Chat messages has been cleared, ready for a new session.")
             elif "newai" == message:
                 # Prompt user for type of chatbot they would like to create
                 try:
@@ -245,6 +246,7 @@ class Chatbot:
                 self.assistant_mode = {"role": "system", "content": system_msg}
                 self.add_to_history(self.assistant_mode)
                 logger.info(f"New asistant mode set: {self.assistant_mode['content']}. Chat messages has been cleared, ready for a new session.")
+                print(f"New asistant mode set: {self.assistant_mode['content']}. Chat messages has been cleared, ready for a new session.")
             else:
                 # Allow for multi-line input if user inputs "mlin"
                 if "mlin" == message:

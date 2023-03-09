@@ -9,7 +9,7 @@ ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and a
 | --- | --- | --- |
 | File Input for Analysis of Reports | Enables analysis of a wide range of text data including financial reports, news reports, source code, etc. | Implemented |
 | Multiline Input for Quick Paste | Allows quick and easy pasting of large amounts of data or complex text data. | Implemented |
-| Summarization for Large File Input | Summarizes large text files using natural language processing techniques to identify important trends and insights. | Implemented (Using `textract` module - working on MacOS & Linus, windows not supported) |
+| Summarization for Large File Input | Summarizes large text files using natural language processing techniques to identify important trends and insights. | Implemented (Using `textract` module - working on MacOS & Linux, Windows not supported) |
 | Token Usage for Cost Calculation | Calculates the number of tokens used and their associated cost in the application. | Implemented |
 | Adjustable Completion Tokens for Customization | Adjusts how large of an output from model you want at most. | Implemented |
 | Chat History for Context-Aware Communication | Keeps track of previous interactions with users, allowing the chatbot to provide more natural and intuitive responses. | Implemented |

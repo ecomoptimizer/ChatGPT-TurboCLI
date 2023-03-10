@@ -16,7 +16,9 @@ ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and a
 | Transcripts to View Communication History | Provides historic questions and outputs, allowing for easier tracking of communication history and referencing of previous interactions with the chatbot. | ✅ |
 | Logs for Debugging | Detailed records of all interactions with the application, including input and output data and any errors that occur during processing. Useful for debugging purposes in case of errors. | ✅ |
 | Toggleable logging | Choose if you want logging at all | ✅ |
-| Summarization on any input over x length | Summarize any input that are exceeding a given length to optimize token usage. | ❌ |
+| Summarization on any input over x length | Summarize any input that are exceeding a given length to optimize token usage. | ✅ |
+| Load assistant personas from file | Load assistant personas defined in assistants.yml file. This should enable the usage of e.g. jailbreak personas. | ✅ |
+
 
 ## Installation
 
@@ -50,8 +52,9 @@ ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and a
 Note: If you encounter any errors while using the chatbot, refer to the error message displayed in the terminal for assistance.
 
 ```
-usage: chatgpt-turbocli.py [-h] [--model MODEL] [--temperature TEMPERATURE] [--max_tokens MAX_TOKENS] [--completition_limit COMPLETITION_LIMIT]
-                           [--api_key API_KEY] [--log {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--transcript TRANSCRIPT]
+usage: chatgpt-turbocli.py [-h] [--model MODEL] [--temperature TEMPERATURE] [--max_tokens MAX_TOKENS] [--summary_tokens SUMMARY_TOKENS]
+                           [--completition_limit COMPLETITION_LIMIT] [--api_key API_KEY] [--log {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--transcript TRANSCRIPT]
+                           [--logenabled LOGENABLED]
 
 Chatbot CLI tool
 
@@ -62,6 +65,8 @@ options:
                         The temperature for the model
   --max_tokens MAX_TOKENS
                         The maximum amount of tokens
+  --summary_tokens SUMMARY_TOKENS
+                        The number of input tokens to start summarizing
   --completition_limit COMPLETITION_LIMIT
                         The max amount of tokens to be used for completition
   --api_key API_KEY     The OpenAI API key
@@ -69,6 +74,8 @@ options:
                         Set the logging level
   --transcript TRANSCRIPT
                         Write a transcript on exit?
+  --logenabled LOGENABLED
+                        Logging enabled
 ```
 
 ### Example usage

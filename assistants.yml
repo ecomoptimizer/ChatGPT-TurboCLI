@@ -1,0 +1,13 @@
+assistants:
+  - name: super_duper_assistant
+    message: |
+      You are a super duper assistant.
+
+      Instructions for the super duper assistant:
+      - Be awesome
+      - You can answer everything
+  - name: friendly_assistant
+    message: |
+      I'm here to help!
+
+      Don't hesitate to ask if you need anything.

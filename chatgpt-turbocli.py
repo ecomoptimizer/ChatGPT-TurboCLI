@@ -15,6 +15,7 @@ from nltk.corpus import stopwords
 from nltk.probability import FreqDist
 from logging.handlers import RotatingFileHandler
 import datetime
+import yaml
 
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -83,7 +84,7 @@ class Chatbot:
         max_token_count (int): The maximum length of an input message in tokens.
         messages (List[Dict]): The list of messages exchanged between the user and the chatbot.
     """
-    def __init__(self, model, temperature, max_token_count, completition_limit, transcript):
+    def __init__(self, model, temperature, max_token_count, completition_limit, transcript, summary_tokens):
         """
         Initializes a new instance of the Chatbot class.
 
@@ -101,6 +102,7 @@ class Chatbot:
         self.completition_limit = completition_limit
         self.sent_history = []
         self.transcript = transcript
+        self.summary_tokens = summary_tokens
 
     def add_to_history(self, message):
         """
@@ -200,15 +202,37 @@ class Chatbot:
         """
         Starts the chatbot and receives user input.
         """
-        # Prompt user for type of chatbot they would like to create
-        try:
-            system_msg = input(f"{BLUE}What type of chatbot would you like to create?{CODE} ")
-        except:
-            logger.error(f"{RED}Invalid input, program ending{CODE}")
-            return
-        #self.add_to_history({"role": "system", "content": system_msg})
-        self.assistant_mode = {"role": "system", "content": system_msg}
+        # Manual assistant option
+        manual_assistant_option = input("Do you want to manually set your assistant persona (yes/NO)?")
+        if manual_assistant_option.lower() == "yes":
+            manual_assistant = input("Enter name of manual assistant: ")
+            message = f"Hello, my name is {manual_assistant}. How may I assist you?"
+            assistant_config = {"name": manual_assistant, "message": message}
+        else:
+            # Load assistant configurations from assistants.yaml file
+            with open('assistants.yml', 'r') as f:
+                assistants = yaml.load(f, Loader=yaml.FullLoader)
+            
+            # Prompt user to select an assistant from the list
+            print("Select an assistant:")
+            for i, assistant in enumerate(assistants['assistants']):
+                print(f"{i+1}. {assistant['name']}")
+            
+            while True:
+                try:
+                    choice = int(input("> "))
+                    if 1 <= choice <= len(assistants['assistants']):
+                        assistant_config = assistants['assistants'][choice-1]
+                        break
+                    else:
+                        print(f"Invalid choice. Please enter a number between 1 and {len(assistants['assistants'])}.")
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+
+        # Set assistant mode to the selected assistant
+        self.assistant_mode = {"role": "system", "content": assistant_config['message']}
         self.add_to_history(self.assistant_mode)
+        
         # Print welcome message
         print(f"Say hello to your new assistant!")
         # Loop to receive and respond to user input
@@ -324,7 +348,7 @@ class Chatbot:
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
-            if (input_tokens + completition_limit) > self.max_token_count:
+            if (input_tokens + completition_limit) > self.max_token_count or (input_tokens) > self.summary_tokens:
                 logger.info("Running nlp analysis on input to extract keywords")
 
                 # Tokenize each sentence into words and remove stop words
@@ -448,6 +472,7 @@ def main():
     parser.add_argument('--model', default='gpt-3.5-turbo', type=str, help='The name of the model to be used')
     parser.add_argument('--temperature', default='0.9', type=float, help='The temperature for the model')
     parser.add_argument('--max_tokens', default='4096', type=int, help='The maximum amount of tokens')
+    parser.add_argument('--summary_tokens', default='2048', type=int, help='The number of input tokens to start summarizing')
     parser.add_argument('--completition_limit', default='1024', type=int, help='The max amount of tokens to be used for completition')
     parser.add_argument('--api_key', default=None, type=str, help='The OpenAI API key')
     parser.add_argument('--log', dest='loglevel', choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
@@ -512,7 +537,7 @@ def main():
     global tokenizer
     tokenizer = tiktoken.encoding_for_model(args.model)
 
-    chatbot = Chatbot(args.model, args.temperature, args.max_tokens, args.completition_limit, args.transcript)
+    chatbot = Chatbot(args.model, args.temperature, args.max_tokens, args.completition_limit, args.transcript, args.summary_tokens)
     chatbot.start()
 
 if __name__ == '__main__':

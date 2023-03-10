@@ -3,6 +3,8 @@
 ## Key features
 ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and analysts with their work. This tool offers a variety of features including file input analysis, multiline input, chat history, and summarization of large text data. The tool is built on OpenAI's ChatGPT-3.5-turbo model and uses natural language processing techniques to provide useful insights and suggestions. With ChatGPT TurboCLI, users can improve their productivity and efficiency in coding, writing, and data analysis.
 
+![image](https://user-images.githubusercontent.com/20763070/224443008-a887f805-c9f2-4b37-aca2-0d433691a532.png)
+
 ![image](https://user-images.githubusercontent.com/20763070/224181900-222e80ae-482f-4447-843f-6dcaf6165879.png)
 
 | Feature | Benefits | Status |

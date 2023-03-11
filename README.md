@@ -41,20 +41,16 @@
     Replace YOUR_API_KEY with your OpenAI API key and MODEL_NAME with the name of the OpenAI model you would like to use.
 
 ## Usage
-
-- The chatbot will prompt you to enter the type of chatbot you would like to create. Enter your response and press enter.
-
-- You can now start chatting with the chatbot. Type your messages and press enter to send them. The chatbot will respond with a message.
-
-- If you want to exit the chatbot, type `quit()` and press enter.
-
-- To see how many tokens have been used in the current chat or for the whole session, type `tokenusage` and press enter.
-
-- To start a new chat with the same assistant as defined on CLI launch, type `newchat` and press enter.
-
+Commands supported while in CLI:
+```python
+QUIT_COMMAND = "quit()"
+TOKEN_USAGE_COMMAND = "tokenusage"
+FEW_SHOT_COMMAND = "fewshot"
+NEW_CHAT_COMMAND = "newchat"
+NEW_AI_COMMAND = "newai"
+MULTI_LINE_COMMAND = "mlin"
+```
 - To input multiple lines at once, type `mlin` and then enter your message. Press `ctrl + D` to end the message.
-
-Note: If you encounter any errors while using the chatbot, refer to the error message displayed in the terminal for assistance.
 
 ```
 usage: chatgpt-turbocli.py [-h] [--model MODEL] [--temperature TEMPERATURE] [--max_tokens MAX_TOKENS] [--summary_tokens SUMMARY_TOKENS]

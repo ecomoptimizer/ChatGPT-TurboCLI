@@ -1,7 +1,20 @@
 # ChatGPT TurboCLI
 
 ## Key features
-ChatGPT TurboCLI is a powerful assistant designed to help coders, writers, and analysts with their work. This tool offers a variety of features including file input analysis, multiline input, chat history, and summarization of large text data. The tool is built on OpenAI's ChatGPT-3.5-turbo model and uses natural language processing techniques to provide useful insights and suggestions. With ChatGPT TurboCLI, users can improve their productivity and efficiency in coding, writing, and data analysis.
+```
+> mlin      
+Enter lines of text. Type "stop" on a separate line to finish.
+> Redesign this description to be something that would make Apple proud:
+> ChatGPT TurboCLI implements ChatGPT-3.5-turbo. 
+Supports file input, summarization of large input, 
+multiline input, usage statistics, 
+flexible way to start new chats / new assistant modes. 
+Developed and tested in VS Code split terminal view.
+> stop
+```
+> Introducing ChatGPT TurboCLI - the revolutionary new platform that empowers you to communicate with unprecedented speed and efficiency. With support for file input, summarization of large files, and multiline input, ChatGPT TurboCLI is 
+the ultimate tool for those who demand the very best in chatbot technology. Our flexible interface lets you start new 
+chats and switch between assistant modes with ease. Developed and rigorously tested using the latest VS Code split terminal view technology, ChatGPT TurboCLI is the perfect partner for anyone who demands excellence in their digital interactions.
 
 ![image](https://user-images.githubusercontent.com/20763070/224443008-a887f805-c9f2-4b37-aca2-0d433691a532.png)
 

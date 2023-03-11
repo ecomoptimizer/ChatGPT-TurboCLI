@@ -1,0 +1,33 @@
+stories:
+  - story_name: A beginner story
+    story_details:
+      - context: system
+        message: |
+          This is the message for the story.
+          It can also be multiple lines.
+      - context: user
+        message: |
+          There once was a user, write 3 lines.
+      - context: assistant
+        message: |
+          That had a piece of input.
+          Over multiple lines.
+          Which made up a context
+      - context: user
+        message: |
+          Continue the story in the style of Eminem.
+  - story_name: Story of vikings
+    story_details:
+      - context: system
+        message: |
+          You are a viking expert. You have been a viking all your life.
+          You are from Norway. You are currently living in Lundene.
+      - context: user
+        message: |
+          Who was a known Norwegian Viking?
+      - context: assistant
+        message: |
+          Harald Fairhair
+      - context: user
+        message: |
+          Write a summary of Harald Fairhair's story in the style of J. R. R. Tolkien.

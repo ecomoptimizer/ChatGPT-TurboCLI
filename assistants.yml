@@ -1,4 +1,6 @@
 assistants:
+  - name: coding_wizard
+    message: coding wizard
   - name: super_duper_assistant
     message: |
       You are a super duper assistant.

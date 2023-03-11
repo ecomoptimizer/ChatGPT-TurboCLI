@@ -103,6 +103,9 @@ class Chatbot:
         self.sent_history = []
         self.transcript = transcript
         self.summary_tokens = summary_tokens
+        self.newai = True
+        self.run = True
+        self.few_shot = False
 
     def add_to_history(self, message):
         """
@@ -126,6 +129,37 @@ class Chatbot:
             return
 
         self.messages.pop()
+
+    
+    def few_shot_learning(self):
+        with open("stories.yml", "r", encoding='utf-8') as f:
+            stories = yaml.load(f, Loader=yaml.FullLoader)['stories']
+        print("Select a story:")
+        for i, story in enumerate(stories):
+            print(f"{i+1}. {story['story_name']}")
+        while True:
+            try:
+                choice = int(input("> "))
+                if 1 <= choice <= len(stories):
+                    story_details = stories[choice-1]['story_details']
+                    break
+                else:
+                    print(f"Invalid choice. Please enter a number between 1 and {len(stories)}.")
+            except ValueError:
+                print("Invalid input. Please enter a number.")
+        for story_step in story_details:
+            role = story_step.get("context")
+            content = story_step.get("message")
+            if role == "system":
+                # Set assistant mode to the selected assistant
+                self.assistant_mode = {"role": "system", "content": content}
+                self.add_to_history(self.assistant_mode)
+                logger.debug({"role": role, "content": content})
+            else:
+                self.add_to_history({"role": role, "content": content})
+                logger.debug({"role": role, "content": content})
+        self.few_shot = True
+        print("Few shot learning has been loaded. Press <ENTER> to send this without further additions.")
 
     def calculate_tokens(self, messagelist):
         """
@@ -196,28 +230,28 @@ class Chatbot:
             else:
                 # add normal line with green text
                 new_response += f"{GREEN}{line}\033[0m\n"
+        if in_code_block:
+            new_response += line + "\n"
+            new_response += "\033[0m"
         return new_response
-
-    def start(self):
+    
+    def set_assistant_mode(self):
         """
-        Starts the chatbot and receives user input.
+        Sets the assistant mode based on user input.
         """
         # Manual assistant option
         manual_assistant_option = input("Do you want to manually set your assistant persona (yes/NO)?")
         if manual_assistant_option.lower() == "yes":
             manual_assistant = input("Enter name of manual assistant: ")
-            message = f"Hello, my name is {manual_assistant}. How may I assist you?"
-            assistant_config = {"name": manual_assistant, "message": message}
+            assistant_config = {"name": "manual_assistant", "message": manual_assistant}
         else:
             # Load assistant configurations from assistants.yaml file
             with open('assistants.yml', 'r', encoding='utf-8') as f:
                 assistants = yaml.load(f, Loader=yaml.FullLoader)
-            
             # Prompt user to select an assistant from the list
             print("Select an assistant:")
             for i, assistant in enumerate(assistants['assistants']):
                 print(f"{i+1}. {assistant['name']}")
-            
             while True:
                 try:
                     choice = int(input("> "))
@@ -228,105 +262,208 @@ class Chatbot:
                         print(f"Invalid choice. Please enter a number between 1 and {len(assistants['assistants'])}.")
                 except ValueError:
                     print("Invalid input. Please enter a number.")
-
         # Set assistant mode to the selected assistant
         self.assistant_mode = {"role": "system", "content": assistant_config['message']}
         self.add_to_history(self.assistant_mode)
-        
-        # Print welcome message
-        print(f"Say hello to your new assistant!")
-        # Loop to receive and respond to user input
-        while True:
-            # Get user input
-            try:
-                message = input(f"{BLUE}> {CODE}")
-                if message.startswith("file"):
-                    file_path = Path(message.split(" ", 1)[1].replace("'", ""))
-                    if not file_path.is_file():
-                        logger.error(f"{RED}File not found: {file_path}{CODE}")
-                        continue
-                    message = textract.process(str(file_path))
-                    message = message.decode('utf-8') # or any other encoding used in the file
-                    logger.debug(message)
-            except KeyboardInterrupt:
-                logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
-                if self.transcript:
-                    save_transcript(self.kept_history)
-                break
-            except EOFError as e:
-                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
-                continue
-            except ValueError as e:
-                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
-                continue
-            except IndexError as e:
-                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
-                continue
-            except Exception as e:
-                logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
-                continue
-            # Break out of loop if user inputs "quit()"
-            if message == "quit()":
-                if self.transcript:
-                    save_transcript(self.kept_history)
-                break
-            # See the token usage for the CLI
-            if "tokenusage" == message:
-                kept_history_tokens = self.calculate_tokens(self.kept_history)
-                logger.info(f"Number of tokens in current chat: {self.calculate_tokens(self.messages)}")
-                logger.info(f"Number of tokens for whole session: {kept_history_tokens}")
-                sent_history_tokens = self.calculate_tokens(self.sent_history)
-                logger.debug(sent_history_tokens)
-                logger.debug(self.sent_history)
-                sent_tokens = kept_history_tokens - sent_history_tokens
-                logger.debug(sent_tokens)
-                if sent_tokens < 0:
-                    sent_tokens = 0
-                else:
-                    sent_tokens = sent_history_tokens
-                logger.debug(sent_tokens)
-                sent_tokens_price = sent_tokens / 1000 * 0.002
-                logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
-                print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
-            # Start a new chat with the same assistant as defined on CLI launch
-            elif "newchat" == message:
-                self.messages = []
-                self.add_to_history(self.assistant_mode)
-                logger.info("Chat messages has been cleared, ready for a new session.")
-                print("Chat messages has been cleared, ready for a new session.")
-            elif "newai" == message:
-                # Prompt user for type of chatbot they would like to create
-                try:
-                    system_msg = input(f"{BLUE}What type of chatbot would you like to create?{CODE} ")
-                except:
-                    logger.error(f"{RED}Invalid input, program ending{CODE}")
-                    return
-                self.messages = []
-                self.assistant_mode = {"role": "system", "content": system_msg}
-                self.add_to_history(self.assistant_mode)
-                logger.info(f"New asistant mode set: {self.assistant_mode['content']}. Chat messages has been cleared, ready for a new session.")
-                print(f"New asistant mode set: {self.assistant_mode['content']}. Chat messages has been cleared, ready for a new session.")
-            else:
-                # Allow for multi-line input if user inputs "mlin"
-                if "mlin" == message:
-                    message, interrupted = self.get_multiline_input()
-                    if interrupted:
-                        break
-                    message = "\n".join(message)
+        self.newai = False
 
-                # Record user input and get assistant response
-                self.add_to_history({"role": "user", "content": message})
-                response = self.get_response()
-                logger.debug(type(response))
-                if response:
-                    self.add_to_history({"role": "assistant", "content": response})
-                    # Print assistant response
-                    #print(f"\n{GREEN}{response}{CODE}\n")
-                    print(self.style_response(response))
-                else:
-                    # Handle the error
-                    logger.error(f"{RED}Error occurred while processing request. Please try again.{CODE}")
-                    self.remove_from_messages()
+    def get_user_input(self):
+        """Get user input from keyboard or file.
+
+        This function first prompts the user for input via standard input. If the user enters a string starting with "file", the program attempts to load the specified file and read its contents. If the file is not found, the function returns. Otherwise, the contents of the file are extracted and returned as a string.
+
+        Returns:
+            str or None: The user's message as a string, or None if an error occurs or the user exits the program.
+        """
+        # Get user input
+        try:
+            message = input(f"{BLUE}> {CODE}")
+            if message.startswith("file"):
+                file_path = Path(message.split(" ", 1)[1].replace("'", ""))
+                if not file_path.is_file():
+                    logger.error(f"{RED}File not found: {file_path}{CODE}")
+                    return
+                message = textract.process(str(file_path))
+                message = message.decode('utf-8') # or any other encoding used in the file
+            logger.debug(message)
+            return message
+        except KeyboardInterrupt:
+            logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
+            if self.transcript:
+                save_transcript(self.kept_history)
+            self.run = False
+            return
+        except EOFError as e:
+            logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
+            return
+        except ValueError as e:
+            logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
+            return
+        except IndexError as e:
+            logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
+            return
+        except Exception as e:
+            logger.error(f"{RED}Invalid input, please try again. Error code {e} {CODE}")
+            return
+
+    def tokenusage(self):
+        """Calculate and print the token usage statistics for the session.
+
+        This function calculates the number of tokens used in the current chat session, as well as the total number of tokens used throughout the entire program's runtime. It then prints the results to the console.
+
+        Returns:
+            None
+        """
+        kept_history_tokens = self.calculate_tokens(self.kept_history)
+        logger.info(f"Number of tokens in current chat: {self.calculate_tokens(self.messages)}")
+        logger.info(f"Number of tokens for whole session: {kept_history_tokens}")
+        sent_history_tokens = self.calculate_tokens(self.sent_history)
+        logger.debug(sent_history_tokens)
+        logger.debug(self.sent_history)
+        sent_tokens = kept_history_tokens - sent_history_tokens
+        logger.debug(sent_tokens)
+        if sent_tokens < 0:
+            sent_tokens = 0
+        else:
+            sent_tokens = sent_history_tokens
+        logger.debug(sent_tokens)
+        sent_tokens_price = sent_tokens / 1000 * 0.002
+        logger.info(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
+        print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
+
+    def process_user_input(self, message):
+        """Process a user's input and respond.
+
+        This function is called whenever a user enters input. It first checks if the input is a program command (such as "quit()" or "tokenusage"). If it is, the corresponding action is taken. Otherwise, the input is recorded in the chat history and passed to the OpenAI API to retrieve a response. The response is then recorded in the chat history and printed to the console.
+
+        Args:
+            message (str): The user's input.
+
+        Returns:
+            None
+        """
+        if not message and not self.few_shot:
+            logger.debug("No content in input and few_shot is not enabled.")
+            return
+        logger.debug(message)
+        # Break out of loop if user inputs "quit()"
+        if message == "quit()":
+            if self.transcript:
+                save_transcript(self.kept_history)
+            self.run = False
+            return
+        # See the token usage for the CLI
+        if "tokenusage" == message:
+            self.tokenusage()
+            return
+        # Setup few shot learning ref. https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/chatgpt#few-shot-learning-with-chatml
+        if "fewshot" == message:
+            self.few_shot_learning()
+            return
+        # Start a new chat with the same assistant as defined on CLI launch
+        elif "newchat" == message:
+            self.messages = []
+            self.add_to_history(self.assistant_mode)
+            logger.info("Chat messages has been cleared, ready for a new session.")
+            print("Chat messages has been cleared, ready for a new session.")
+            return
+        elif "newai" == message:
+            self.messages = []
+            self.newai = True
+            self.few_shot = False
+            return
+        else:
+            # Allow for multi-line input if user inputs "mlin"
+            if "mlin" == message:
+                message = self.get_multiline_input()
+                if not message:
+                    return
+
+            # Record user input and get assistant response
+            self.add_to_history({"role": "user", "content": message})
+            response = self.get_response()
+            logger.debug(type(response))
+            if response:
+                self.add_to_history({"role": "assistant", "content": response})
+                # Print assistant response
+                #print(f"\n{GREEN}{response}{CODE}\n")
+                print(self.style_response(response))
+            else:
+                # Handle the error
+                logger.error(f"{RED}Error occurred while processing request. Please try again.{CODE}")
+                self.remove_from_messages()
+            return
+
+    def start(self):
+        """
+        Starts the chatbot and receives user input.
+        """
+        # Loop to receive and respond to user input
+        while self.run:
+            while self.newai:
+                self.set_assistant_mode()
+                # Print welcome message
+                print(f"Say hello to your new assistant!")
+
+            self.process_user_input(self.get_user_input())
+
+    def nlp_analysis(self, input_tokens):
+        logger.info("Running nlp analysis on input to extract keywords")
+
+        messages = "".join([message["content"] for message in self.messages])
+        # Split the input into sentences and tokenize each sentence separately
+        sentences = messages.split(".")
+        # Tokenize each sentence into words and remove stop words
+        stop_words = set(stopwords.words('english'))
+        words = []
+        for sentence in sentences:
+            words += [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
+
+        # Calculate the frequency of each word
+        freq_dist = FreqDist(words)
+
+        # Rank the sentences based on the frequency of their words
+        ranked_sentences = []
+        for sentence in sentences:
+            sentence_words = [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
+            sentence_score = sum([freq_dist[word] for word in sentence_words])
+            ranked_sentences.append((sentence, sentence_score))
+        ranked_sentences.sort(key=lambda x: x[1], reverse=True)
+        logger.debug(f"ranked_senteces: {ranked_sentences}")
+        # Generate a summary by combining the top-ranked sentences
+        summary_length = 10
+        summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+        summary = summary.replace('\n', ' ')
+        logger.debug(summary)
+        # Calculate current number of tokens
+        current_tokens = self.calculate_summary_tokens(summary)
+        logger.debug(f"Current_tokens: {current_tokens}")
+        # Increase summary length until token constraint is met
+        while (current_tokens + self.completition_limit) < self.max_token_count and summary_length < len(ranked_sentences):
+            summary_length += 1
+            summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+            summary = summary.replace('\n', ' ')
+            current_tokens = self.calculate_summary_tokens(summary)
+
+        # If token constraint is exceeded, backtrack
+        while (current_tokens + self.completition_limit) > self.max_token_count and summary_length > 1:
+            summary_length -= 1
+            summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+            summary = summary.replace('\n', ' ')
+            current_tokens = self.calculate_summary_tokens(summary)
+
+        # Finalize summary
+        #summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
+        #summary = summary.replace('\n', ' ')
+        logger.debug(f"Summary: {summary}")
+        logger.debug("creating new message list")
+        # Only clear history if input and completition is over self.max_token_count
+        if (input_tokens + self.completition_limit) > self.max_token_count:
+            self.messages = []
+        self.messages.append(self.assistant_mode)
+        self.messages.append({"role": "user", "content": summary})
+
+        logger.info("Analysis complete, sending to AI")
 
     def get_response(self):
         """
@@ -337,69 +474,13 @@ class Chatbot:
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
-        completition_limit = self.completition_limit
 
         try:
-            messages = "".join([message["content"] for message in self.messages])
-            # Split the input into sentences and tokenize each sentence separately
-            sentences = messages.split(".")
-            #tokens = [tokenizer.encode(sentence.strip()) for sentence in sentences if sentence.strip()]
-            #logger.debug(tokens)
             # Calculate the total number of input tokens
             input_tokens = self.calculate_tokens(self.messages)
             logger.debug(input_tokens)
-            if (input_tokens + completition_limit) > self.max_token_count or (input_tokens) > self.summary_tokens:
-                logger.info("Running nlp analysis on input to extract keywords")
-
-                # Tokenize each sentence into words and remove stop words
-                stop_words = set(stopwords.words('english'))
-                words = []
-                for sentence in sentences:
-                    words += [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
-
-                # Calculate the frequency of each word
-                freq_dist = FreqDist(words)
-
-                # Rank the sentences based on the frequency of their words
-                ranked_sentences = []
-                for sentence in sentences:
-                    sentence_words = [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
-                    sentence_score = sum([freq_dist[word] for word in sentence_words])
-                    ranked_sentences.append((sentence, sentence_score))
-                ranked_sentences.sort(key=lambda x: x[1], reverse=True)
-                logger.debug(f"ranked_senteces: {ranked_sentences}")
-                # Generate a summary by combining the top-ranked sentences
-                summary_length = 10
-                summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-                summary = summary.replace('\n', ' ')
-                logger.debug(summary)
-                # Calculate current number of tokens
-                current_tokens = self.calculate_summary_tokens(summary)
-                logger.debug(f"Current_tokens: {current_tokens}")
-                # Increase summary length until token constraint is met
-                while (current_tokens + completition_limit) < self.max_token_count and summary_length < len(ranked_sentences):
-                    summary_length += 1
-                    summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-                    summary = summary.replace('\n', ' ')
-                    current_tokens = self.calculate_summary_tokens(summary)
-
-                # If token constraint is exceeded, backtrack
-                while (current_tokens + completition_limit) > self.max_token_count and summary_length > 1:
-                    summary_length -= 1
-                    summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-                    summary = summary.replace('\n', ' ')
-                    current_tokens = self.calculate_summary_tokens(summary)
-
-                # Finalize summary
-                #summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-                #summary = summary.replace('\n', ' ')
-                logger.debug(f"Summary: {summary}")
-                logger.debug("creating new message list")
-                self.messages = []
-                self.messages.append(self.assistant_mode)
-                self.messages.append({"role": "user", "content": summary})
-
-                logger.info("Analysis complete, sending to AI")
+            if (input_tokens + self.completition_limit) > self.max_token_count or (input_tokens) > self.summary_tokens:
+                self.nlp_analysis(input_tokens)
 
             # Combine all user messages into a single string
             #message = [{"role": "user", "content": messages}]
@@ -446,7 +527,6 @@ class Chatbot:
         print(f"{GREEN}Enter lines of text. Type {BLUE}\"stop\"{GREEN} on a separate line to finish.{CODE}")
         lines = []
         token_count = 0
-        interrupted = False
         try:
             while True:
                 line = input(f"{BLUE}> {CODE}")
@@ -456,13 +536,15 @@ class Chatbot:
                     break
                 if token_count + len(line.split()) > self.max_token_count:
                     logger.error(f"{RED}Input exceeds maximum length of {self.max_token_count} tokens. Please try again.{CODE}")
-                    return lines, interrupted
+                    return lines
                 lines.append(line)
                 token_count += len(line.split())
         except KeyboardInterrupt:
-            interrupted = True
             logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
-        return lines, interrupted
+            self.run = False
+            return False
+        message = "\n".join(lines)
+        return message
     
 def main():
     """

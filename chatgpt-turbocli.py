@@ -210,7 +210,7 @@ class Chatbot:
             assistant_config = {"name": manual_assistant, "message": message}
         else:
             # Load assistant configurations from assistants.yaml file
-            with open('assistants.yml', 'r') as f:
+            with open('assistants.yml', 'r', encoding='utf-8') as f:
                 assistants = yaml.load(f, Loader=yaml.FullLoader)
             
             # Prompt user to select an assistant from the list

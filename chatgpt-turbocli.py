@@ -23,6 +23,12 @@ BLUE = "\033[34m"
 CODE = "\033[36m"
 GREY_BACKGROUND = '\033[48;5;240m'
 RESET_COLOR = '\033[0m'
+QUIT_COMMAND = "quit()"
+TOKEN_USAGE_COMMAND = "tokenusage"
+FEW_SHOT_COMMAND = "fewshot"
+NEW_CHAT_COMMAND = "newchat"
+NEW_AI_COMMAND = "newai"
+MULTI_LINE_COMMAND = "mlin"
 
 nlp = None
 tokenizer = None
@@ -239,6 +245,11 @@ class Chatbot:
         """
         Sets the assistant mode based on user input.
         """
+        # Few shot mode or assistant mode?
+        fewshot_or_assistant_mode = input("Do you want to use few_shot mode (context loading through stories.yml file)? (yes/NO)")
+        if fewshot_or_assistant_mode.lower() == "yes":
+            self.newai = False
+            return self.few_shot_learning()
         # Manual assistant option
         manual_assistant_option = input("Do you want to manually set your assistant persona (yes/NO)?")
         if manual_assistant_option.lower() == "yes":
@@ -266,6 +277,8 @@ class Chatbot:
         self.assistant_mode = {"role": "system", "content": assistant_config['message']}
         self.add_to_history(self.assistant_mode)
         self.newai = False
+        # Print welcome message
+        print(f"Say hello to your new assistant: {self.assistant_mode['content']}")
 
     def get_user_input(self):
         """Get user input from keyboard or file.
@@ -332,78 +345,63 @@ class Chatbot:
         print(f"Number of tokens sent to OpenAI for whole session: {sent_tokens}. Token cost: ${sent_tokens_price:.5f} ({sent_tokens//1000:,}k tokens x $0.002/token).")
 
     def process_user_input(self, message):
-        """Process a user's input and respond.
-
-        This function is called whenever a user enters input. It first checks if the input is a program command (such as "quit()" or "tokenusage"). If it is, the corresponding action is taken. Otherwise, the input is recorded in the chat history and passed to the OpenAI API to retrieve a response. The response is then recorded in the chat history and printed to the console.
-
-        Args:
-            message (str): The user's input.
-
-        Returns:
-            None
-        """
-        if not message and not self.few_shot:
+        should_exit = False
+        
+        if not self.run:
+            should_exit = True
+        elif not message and not self.few_shot:
             logger.debug("No content in input and few_shot is not enabled.")
-            return
-        logger.debug(message)
-        # Break out of loop if user inputs "quit()"
-        if message == "quit()":
+            should_exit = True
+        elif QUIT_COMMAND == message:
             if self.transcript:
                 save_transcript(self.kept_history)
             self.run = False
-            return
-        # See the token usage for the CLI
-        if "tokenusage" == message:
+            should_exit = True
+        elif TOKEN_USAGE_COMMAND == message:
             self.tokenusage()
-            return
-        # Setup few shot learning ref. https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/chatgpt#few-shot-learning-with-chatml
-        if "fewshot" == message:
+            should_exit = True
+        elif FEW_SHOT_COMMAND == message:
             self.few_shot_learning()
-            return
-        # Start a new chat with the same assistant as defined on CLI launch
-        elif "newchat" == message:
+            should_exit = True
+        elif NEW_CHAT_COMMAND == message:
             self.messages = []
             self.add_to_history(self.assistant_mode)
             logger.info("Chat messages has been cleared, ready for a new session.")
             print("Chat messages has been cleared, ready for a new session.")
-            return
-        elif "newai" == message:
+            should_exit = True
+        elif NEW_AI_COMMAND == message:
             self.messages = []
             self.newai = True
             self.few_shot = False
-            return
+            should_exit = True
         else:
-            # Allow for multi-line input if user inputs "mlin"
-            if "mlin" == message:
+            if MULTI_LINE_COMMAND == message:
                 message = self.get_multiline_input()
                 if not message:
-                    return
+                    should_exit = True
 
-            # Record user input and get assistant response
-            self.add_to_history({"role": "user", "content": message})
-            response = self.get_response()
-            logger.debug(type(response))
-            if response:
-                self.add_to_history({"role": "assistant", "content": response})
-                # Print assistant response
-                #print(f"\n{GREEN}{response}{CODE}\n")
-                print(self.style_response(response))
-            else:
-                # Handle the error
-                logger.error(f"{RED}Error occurred while processing request. Please try again.{CODE}")
-                self.remove_from_messages()
+            if not should_exit:
+                self.add_to_history({"role": "user", "content": message})
+                response = self.get_response()
+                logger.debug(type(response))
+                if response:
+                    self.add_to_history({"role": "assistant", "content": response})
+                    print(self.style_response(response))
+                else:
+                    logger.error(f"{RED}Error occurred while processing request. Please try again.{CODE}")
+                    self.remove_from_messages()
+        
+        if should_exit:
             return
-
+        
     def start(self):
         """
         Starts the chatbot and receives user input.
         """
         # Loop to receive and respond to user input
         while self.run:
-            while self.newai:
+            if self.newai:
                 self.set_assistant_mode()
-                # Print welcome message
-                print(f"Say hello to your new assistant!")
 
             self.process_user_input(self.get_user_input())
 

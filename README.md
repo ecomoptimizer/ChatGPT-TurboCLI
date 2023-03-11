@@ -1,24 +1,14 @@
 # ChatGPT TurboCLI
 
 ## Key features
-```
-> mlin      
-Enter lines of text. Type "stop" on a separate line to finish.
-> Redesign this description to be something that would make Apple proud:
-> ChatGPT TurboCLI implements ChatGPT-3.5-turbo. 
-Supports file input, summarization of large input, 
-multiline input, usage statistics, 
-flexible way to start new chats / new assistant modes. 
-Developed and tested in VS Code split terminal view.
-> stop
-```
-> Introducing ChatGPT TurboCLI - the revolutionary new platform that empowers you to communicate with unprecedented speed and efficiency. With support for file input, summarization of large files, and multiline input, ChatGPT TurboCLI is 
-the ultimate tool for those who demand the very best in chatbot technology. Our flexible interface lets you start new 
-chats and switch between assistant modes with ease. Developed and rigorously tested using the latest VS Code split terminal view technology, ChatGPT TurboCLI is the perfect partner for anyone who demands excellence in their digital interactions.
+### Assistant personas via assistants.yml
+![image](https://user-images.githubusercontent.com/20763070/224506786-67076c6c-0b27-4084-9523-7518477bf7f2.png)
+### Few shot learning (context loading) through stories.yml
+![image](https://user-images.githubusercontent.com/20763070/224506819-56a2f1ba-b7f1-42a1-baee-e2c0c27c5b55.png)
+### File input while in CLI
+![fileexample](https://user-images.githubusercontent.com/20763070/224507231-7b9e405d-3be8-433d-be00-aa25a934133c.png)
 
-![image](https://user-images.githubusercontent.com/20763070/224443008-a887f805-c9f2-4b37-aca2-0d433691a532.png)
 
-![image](https://user-images.githubusercontent.com/20763070/224181900-222e80ae-482f-4447-843f-6dcaf6165879.png)
 
 | Feature | Benefits | Status |
 | --- | --- | --- |

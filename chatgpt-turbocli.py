@@ -128,6 +128,7 @@ class Chatbot:
 
     def add_to_sent(self, message):
         self.sent_history.extend(message)
+        logger.debug(len(self.sent_history))
     
     def remove_from_messages(self):
         """
@@ -138,7 +139,6 @@ class Chatbot:
 
         self.messages.pop()
 
-    
     def few_shot_learning(self):
         with open("stories.yml", "r", encoding='utf-8') as f:
             stories = yaml.load(f, Loader=yaml.FullLoader)['stories']
@@ -182,8 +182,8 @@ class Chatbot:
         messages = [message['content'] for message in messagelist]
         roles = [message['role'] for message in self.messages]
         current_historic_chat = ' '.join(messages) + ' '.join(roles)
-        sentences = current_historic_chat.split(".")
-        tokens = list(map(tokenizer.encode, sentences))
+        sentences = sent_tokenize(current_historic_chat)
+        tokens = list(map(tokenizer.encode_ordinary, sentences))
         token_lengths = [len(token) for token in tokens]
         input_tokens = sum(token_lengths)
         return input_tokens
@@ -203,7 +203,7 @@ class Chatbot:
         input_tokens = calculate_summary_tokens(summary)
         print(input_tokens) # Output: 12
         """
-        sentences = summary.split(".")
+        sentences = sent_tokenize(summary)
         tokens = list(map(tokenizer.encode, sentences))
         token_lengths = [len(token) for token in tokens]
         input_tokens = sum(token_lengths)
@@ -462,6 +462,7 @@ class Chatbot:
         user_messages, assistant_messages = self.join_role_messages()
         user_message_summary = self.nlp_summarization(user_messages)
         assistant_message_summary = self.nlp_summarization(assistant_messages)
+        last_message_from_user = self.messages[-1]
         self.messages.append(self.assistant_mode)
         self.messages.append({"role": "user", "content": user_message_summary})
         self.messages.append({"role": "assistant", "content": assistant_message_summary})
@@ -473,6 +474,8 @@ class Chatbot:
             self.messages.append(self.assistant_mode)
             self.messages.append({"role": "user", "content": user_message_summary})
             self.messages.append({"role": "assistant", "content": assistant_message_summary})
+            if self.calculate_tokens([last_message_from_user]) < TOKEN_VARIANCE:
+                self.messages.append(last_message_from_user)
         logger.info("Analysis complete, sending to AI")
         logger.debug(f"length of self.messages when sending from nlp_analysis: {len(self.messages)}")
 

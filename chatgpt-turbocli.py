@@ -29,6 +29,8 @@ FEW_SHOT_COMMAND = "fewshot"
 NEW_CHAT_COMMAND = "newchat"
 NEW_AI_COMMAND = "newai"
 MULTI_LINE_COMMAND = "mlin"
+TOKEN_VARIANCE = 200 # Token variance to account for the approximation in the summarization method that is applied.
+MAX_SUMMARY_LENGTH = 10  # maximum number of sentences in the summary
 
 nlp = None
 tokenizer = None
@@ -122,7 +124,7 @@ class Chatbot:
         # Add the new message to the recent history deque
         self.kept_history.append(message)
         self.messages.append(message)
-        logger.debug(message)
+        logger.debug(len(message))
 
     def add_to_sent(self, message):
         self.sent_history.extend(message)
@@ -174,7 +176,7 @@ class Chatbot:
         Args:
             messagelist (list): The list of message dicts to be counted for their tokens.
         """
-        logger.debug(messagelist)
+        logger.debug(len(messagelist))
         if len(messagelist) == 0:
             return 0
         messages = [message['content'] for message in messagelist]
@@ -298,7 +300,7 @@ class Chatbot:
                     return
                 message = textract.process(str(file_path))
                 message = message.decode('utf-8') # or any other encoding used in the file
-            logger.debug(message)
+            logger.debug(len(message))
             return message
         except KeyboardInterrupt:
             logger.info(f"{RED}Ctrl+C pressed. Exiting.{CODE}")
@@ -405,63 +407,74 @@ class Chatbot:
 
             self.process_user_input(self.get_user_input())
 
-    def nlp_analysis(self, input_tokens):
-        logger.info("Running nlp analysis on input to extract keywords")
+    def join_role_messages(self):
+        user_messages = []
+        assistant_messages = []
+        for message in self.messages:
+            if message["role"] == "user":
+                user_messages.append(message["content"])
+            elif message["role"] == "assistant":
+                assistant_messages.append(message["content"])
+        user_messages_combined = "".join(user_messages)
+        assistant_messages_combined = "".join(assistant_messages)
+        return (user_messages_combined, assistant_messages_combined)
+    
 
-        messages = "".join([message["content"] for message in self.messages])
-        # Split the input into sentences and tokenize each sentence separately
-        sentences = messages.split(".")
-        # Tokenize each sentence into words and remove stop words
+    def generate_summary(self, sentences, max_tokens):
+        """
+        Generate a summary of the input sentences, limited by the maximum number of tokens.
+        """
+        assistant_token_length = self.calculate_tokens([self.assistant_mode])
         stop_words = set(stopwords.words('english'))
-        words = []
-        for sentence in sentences:
-            words += [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
-
-        # Calculate the frequency of each word
+        words = [word.lower() for sentence in sentences for word in word_tokenize(sentence) if word.lower() not in stop_words]
         freq_dist = FreqDist(words)
-
-        # Rank the sentences based on the frequency of their words
-        ranked_sentences = []
-        for sentence in sentences:
-            sentence_words = [word.lower() for word in word_tokenize(sentence) if word.lower() not in stop_words]
-            sentence_score = sum([freq_dist[word] for word in sentence_words])
-            ranked_sentences.append((sentence, sentence_score))
+        # Sort sentences based on frequency score
+        ranked_sentences = [(sentence, sum([freq_dist[word.lower()] for word in word_tokenize(sentence) if word.lower() not in stop_words])) for sentence in sentences]
         ranked_sentences.sort(key=lambda x: x[1], reverse=True)
-        logger.debug(f"ranked_senteces: {ranked_sentences}")
-        # Generate a summary by combining the top-ranked sentences
-        summary_length = 10
-        summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-        summary = summary.replace('\n', ' ')
-        logger.debug(summary)
-        # Calculate current number of tokens
+        # Generate summary
+        summary = " ".join([sentence for sentence, score in ranked_sentences[:MAX_SUMMARY_LENGTH]]).replace('\n', ' ')
         current_tokens = self.calculate_summary_tokens(summary)
-        logger.debug(f"Current_tokens: {current_tokens}")
         # Increase summary length until token constraint is met
-        while (current_tokens + self.completition_limit) < self.max_token_count and summary_length < len(ranked_sentences):
-            summary_length += 1
-            summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-            summary = summary.replace('\n', ' ')
+        while (current_tokens + self.completition_limit + assistant_token_length) < max_tokens - TOKEN_VARIANCE and len(ranked_sentences) > len(summary.split()):
+            summary = " ".join([sentence for sentence, score in ranked_sentences[:len(summary.split())+1]]).replace('\n', ' ')
             current_tokens = self.calculate_summary_tokens(summary)
-
-        # If token constraint is exceeded, backtrack
-        while (current_tokens + self.completition_limit) > self.max_token_count and summary_length > 1:
-            summary_length -= 1
-            summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-            summary = summary.replace('\n', ' ')
+        # Backtrack if token constraint is exceeded
+        while (current_tokens + self.completition_limit + assistant_token_length) > max_tokens - TOKEN_VARIANCE and len(summary.split()) > 1:
+            summary = " ".join([sentence for sentence, score in ranked_sentences[:len(summary.split())-1]]).replace('\n', ' ')
             current_tokens = self.calculate_summary_tokens(summary)
+        logger.debug(f"Summary tokens: {self.calculate_summary_tokens(summary)}")
+        return summary
 
-        # Finalize summary
-        #summary = " ".join([sentence for sentence, score in ranked_sentences[:summary_length]])
-        #summary = summary.replace('\n', ' ')
-        logger.debug(f"Summary: {summary}")
-        logger.debug("creating new message list")
-        # Only clear history if input and completition is over self.max_token_count
-        if (input_tokens + self.completition_limit) > self.max_token_count:
-            self.messages = []
+    def nlp_summarization(self, messages):
+        """
+        Generate a summary of the input messages using NLP techniques.
+        """
+        # Tokenize input text
+        sentences = sent_tokenize(messages)
+        summary = self.generate_summary(sentences, self.max_token_count)
+        return summary
+    
+    def nlp_analysis(self, input_tokens):
+        """
+        Run NLP analysis on the input to extract keywords.
+        """
+        logger.info("Running NLP analysis on input to extract keywords")
+        user_messages, assistant_messages = self.join_role_messages()
+        user_message_summary = self.nlp_summarization(user_messages)
+        assistant_message_summary = self.nlp_summarization(assistant_messages)
         self.messages.append(self.assistant_mode)
-        self.messages.append({"role": "user", "content": summary})
-
+        self.messages.append({"role": "user", "content": user_message_summary})
+        self.messages.append({"role": "assistant", "content": assistant_message_summary})
+        input_tokens = self.calculate_tokens(self.messages)
+        # history is over the maximum token count
+        if (input_tokens + self.completition_limit) >= self.max_token_count - TOKEN_VARIANCE:
+            self.messages = []
+            logger.debug("Cleared self message list since the input is too large with the current completion limit and max token count.")
+            self.messages.append(self.assistant_mode)
+            self.messages.append({"role": "user", "content": user_message_summary})
+            self.messages.append({"role": "assistant", "content": assistant_message_summary})
         logger.info("Analysis complete, sending to AI")
+        logger.debug(f"length of self.messages when sending from nlp_analysis: {len(self.messages)}")
 
     def get_response(self):
         """
@@ -482,7 +495,7 @@ class Chatbot:
 
             # Combine all user messages into a single string
             #message = [{"role": "user", "content": messages}]
-            logger.debug(self.messages)
+            logger.debug(len(self.messages))
             # Send messages as a stream to the API
             response = openai.ChatCompletion.create(
                 model=self.model,

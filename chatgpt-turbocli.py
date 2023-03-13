@@ -73,9 +73,14 @@ def save_transcript(kept_history):
     if kept_history:
         try:
             with open(transcript_file, "a+", encoding="utf-8") as f:
-                f.write(f"Transcript for {current_date} - {current_time}\n\n")
+                f.write(f"## Transcript for {current_date} - {current_time}\n\n")
                 for message in kept_history:
-                    f.write(f"{message['role']}: {message['content']}\n")
+                    if message['role'] == 'user':
+                        f.write(f"**User:** {message['content']}\n\n")
+                    elif message['role'] == 'assistant':
+                        f.write(f"**Assistant:** {message['content']}\n\n")
+                    else:
+                        f.write(f"__**{message['role']}:** {message['content']}__\n\n")
             print(f"Transcript saved to {transcript_file}")
         except (IOError, PermissionError) as e:
             print(f"Error saving transcript: {str(e)}")
